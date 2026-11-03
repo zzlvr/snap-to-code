@@ -7,6 +7,7 @@ Turn a screenshot of a UI into clean **React + Tailwind CSS + shadcn/ui** code, 
 - **Fast input**: paste with `Ctrl/⌘ + V`, drag and drop, or pick a file.
 - **Two-step generation**: a vision model first analyses the UI structure (the *Structure* tab), then writes one file per component, streamed live.
 - **Code standards**: Tailwind utility classes only, shadcn/ui components, lucide-react icons; `app/page.tsx` composes the page.
+- **Before / after compare**: your screenshot and the rendered result side by side with one draggable divider (mouse, touch or arrow keys), so you can see at a glance how faithful the generated UI is.
 - **Live preview**: sandboxed iframe with a Desktop / Tablet / Mobile switcher.
 - **Export**: copy every file in one click, download a ZIP, or copy the ready-made `npx shadcn@latest add …` command.
 - **Bring your own model (BYOK)**: Gemini, OpenAI, Anthropic, OpenRouter, Ollama, or any OpenAI-compatible server.

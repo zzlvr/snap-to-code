@@ -5,7 +5,6 @@ import { ChevronDown, KeyRound, Loader2, ScanSearch } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getPreset, PROVIDERS, type ProviderProfile } from "@/lib/providers";
 
 const PROVIDER_ITEMS = PROVIDERS.map((p) => ({ value: p.id, label: p.label }));
@@ -93,18 +92,20 @@ export function SettingsPanel({ providerId, profile, disabled, finding, onProvid
         <div className="space-y-4 border-t p-3">
           <div className="space-y-1.5">
             <Label htmlFor="provider">Provider</Label>
-            <Select items={PROVIDER_ITEMS} value={providerId} onValueChange={(v) => v && onProvider(v)}>
-              <SelectTrigger id="provider" className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {PROVIDER_ITEMS.map((i) => (
-                  <SelectItem key={i.value} value={i.value}>
-                    {i.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {/* Native <select>: a custom popup is portalled outside the modal <dialog> and cannot be clicked. */}
+            <select
+              id="provider"
+              name="provider"
+              value={providerId}
+              onChange={(e) => onProvider(e.target.value)}
+              className="h-9 w-full rounded-lg border border-input bg-background px-2.5 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {PROVIDER_ITEMS.map((i) => (
+                <option key={i.value} value={i.value}>
+                  {i.label}
+                </option>
+              ))}
+            </select>
           </div>
 
           {preset.editableBaseUrl && (

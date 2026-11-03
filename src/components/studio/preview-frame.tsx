@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { RefreshCw } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
+import { Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { usePreviewStatus } from "@/hooks/use-preview-status";
 import { buildPreviewHtml } from "@/lib/preview-html";
 import type { GeneratedFile } from "@/lib/types";
 
@@ -15,21 +16,11 @@ const WIDTHS = [
 export function PreviewFrame({ files }: { files: GeneratedFile[] }) {
   const [nonce, setNonce] = useState(0);
   const [width, setWidth] = useState<(typeof WIDTHS)[number]["width"]>("100%");
-  const [error, setError] = useState<string | null>(null);
   const frameRef = useRef<HTMLIFrameElement>(null);
+  const { error, ready, reset } = usePreviewStatus(frameRef);
 
   // "Reload" only remounts the iframe (new key), so the HTML itself depends on files alone.
   const html = useMemo(() => buildPreviewHtml(files), [files]);
-
-  useEffect(() => {
-    function onMessage(e: MessageEvent) {
-      if (e.source !== frameRef.current?.contentWindow) return;
-      if (e.data?.type === "preview-error") setError(String(e.data.message));
-      if (e.data?.type === "preview-ok") setError(null);
-    }
-    window.addEventListener("message", onMessage);
-    return () => window.removeEventListener("message", onMessage);
-  }, []);
 
   return (
     <div className="flex h-full flex-col gap-2">
@@ -53,14 +44,23 @@ export function PreviewFrame({ files }: { files: GeneratedFile[] }) {
           size="sm"
           variant="outline"
           onClick={() => {
-            setError(null);
+            reset();
             setNonce((n) => n + 1);
           }}
         >
           <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" /> Reload
         </Button>
       </div>
-      <div className="flex-1 overflow-auto rounded-md border bg-[repeating-conic-gradient(var(--muted)_0%_25%,transparent_0%_50%)] bg-[length:16px_16px] overscroll-contain">
+      <div className="relative flex-1 overflow-auto rounded-md border bg-[repeating-conic-gradient(var(--muted)_0%_25%,transparent_0%_50%)] bg-[length:16px_16px] overscroll-contain">
+        {!ready && !error && (
+          <p
+            role="status"
+            className="pointer-events-none absolute inset-x-0 top-6 z-10 mx-auto flex w-fit items-center gap-2 rounded-md border bg-card px-3 py-1.5 text-sm text-muted-foreground shadow-sm"
+          >
+            <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+            Rendering the generated UI…
+          </p>
+        )}
         <iframe
           ref={frameRef}
           key={nonce}

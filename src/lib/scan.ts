@@ -16,6 +16,8 @@ const RULES: { re: RegExp; message: string }[] = [
   { re: /<script\b|<iframe\b/i, message: "script or iframe tag" },
 ];
 
+const IMPORT_SPECIFIER = /(?:from\s+|import\s*\(\s*|require\s*\(\s*|import\s+)["']([^"']+)["']/g;
+
 /**
  * Generated code is untrusted: a screenshot can contain text that steers the model.
  * The preview is sandboxed, but code copied into a real project is not, so flag anything
@@ -27,7 +29,7 @@ export function scanGeneratedCode(files: GeneratedFile[]): ScanWarning[] {
     for (const rule of RULES) {
       if (rule.re.test(f.code)) out.push({ path: f.path, message: rule.message });
     }
-    for (const m of f.code.matchAll(/(?:from\s+|import\s*\(\s*|require\s*\(\s*|import\s+)["']([^"']+)["']/g)) {
+    for (const m of f.code.matchAll(IMPORT_SPECIFIER)) {
       if (!ALLOWED_MODULES.test(m[1])) out.push({ path: f.path, message: `unexpected import "${m[1]}"` });
     }
   }

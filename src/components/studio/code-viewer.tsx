@@ -25,7 +25,16 @@ export function CodeViewer({ files, busy }: { files: GeneratedFile[]; busy: bool
       toast.success(msg);
       setTimeout(() => setCopied(null), 1500);
     } catch {
-      toast.error("Could not copy to the clipboard");
+      toast.error("Could not copy automatically. Select the code and press Ctrl/⌘ + C instead.");
+    }
+  }
+
+  async function downloadZip() {
+    try {
+      downloadBlob(await filesToZip(files), "snap-to-code.zip");
+    } catch {
+      // The ZIP library is loaded on demand, so this fails when the network is down.
+      toast.error("Could not build the ZIP. Check your connection and try again, or use Copy all files.");
     }
   }
 
@@ -55,12 +64,7 @@ export function CodeViewer({ files, busy }: { files: GeneratedFile[]; busy: bool
           {copied === "all" ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
           Copy all files
         </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          disabled={busy}
-          onClick={async () => downloadBlob(await filesToZip(files), "snap-to-code.zip")}
-        >
+        <Button size="sm" variant="outline" disabled={busy} onClick={downloadZip}>
           <Download className="h-3.5 w-3.5" /> ZIP
         </Button>
         {cmd && (
@@ -77,6 +81,7 @@ export function CodeViewer({ files, busy }: { files: GeneratedFile[]; busy: bool
               <button
                 type="button"
                 onClick={() => setSelected(f.path)}
+                aria-current={current?.path === f.path ? "true" : undefined}
                 className={cn(
                   "flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left font-mono text-xs transition-colors hover:bg-muted",
                   current?.path === f.path && "bg-muted font-semibold",
@@ -95,13 +100,18 @@ export function CodeViewer({ files, busy }: { files: GeneratedFile[]; busy: bool
             <button
               type="button"
               onClick={() => current && copy(current.code, current.path, `${current.path} copied`)}
-              className="rounded p-1 text-zinc-400 hover:text-zinc-100"
+              className="rounded p-1 text-zinc-400 hover:text-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime"
               aria-label="Copy file"
             >
               {copied === current?.path ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
             </button>
           </div>
-          <pre className="max-h-[560px] overflow-auto p-4 text-xs leading-relaxed">
+          {/* Scrollable region: focusable so keyboard users can scroll it. */}
+          <pre
+            tabIndex={0}
+            aria-label={`Source of ${current?.path}`}
+            className="max-h-[560px] overflow-auto p-4 text-xs leading-relaxed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-lime"
+          >
             <code>{current?.code}</code>
           </pre>
         </div>

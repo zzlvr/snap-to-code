@@ -12,6 +12,8 @@ import {
 } from "@/lib/providers";
 
 const KEY = "snap-to-code:settings:v2";
+// The first version stored a plaintext API key under this name. Delete it so no stale key lingers.
+const LEGACY_KEY = "snap-to-code:settings:v1";
 
 interface Stored {
   provider: string;
@@ -32,6 +34,7 @@ export function useSettings() {
 
   useEffect(() => {
     try {
+      localStorage.removeItem(LEGACY_KEY);
       const raw = localStorage.getItem(KEY);
       // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrating from localStorage after mount
       if (raw) setStored({ ...INITIAL, ...JSON.parse(raw) });

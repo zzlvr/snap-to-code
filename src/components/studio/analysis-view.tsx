@@ -17,13 +17,16 @@ export function AnalysisView({ analysis }: { analysis: Analysis | null }) {
         </p>
       </div>
       <ul className="grid gap-3 sm:grid-cols-2">
-        {analysis.components.map((c) => (
-          <li key={c.name} className="rounded-lg border p-3">
+        {analysis.components.map((c, i) => (
+          // Index in the key: a model may return two components with the same name.
+          <li key={`${c.name}-${i}`} className="min-w-0 rounded-md border p-3">
             <div className="flex items-center justify-between gap-2">
-              <span className="font-mono text-sm font-semibold">{c.name}.tsx</span>
-              <Badge variant="secondary">{c.role}</Badge>
+              <span className="min-w-0 truncate font-mono text-sm font-semibold">{c.name}.tsx</span>
+              <Badge variant="secondary" className="shrink-0">
+                {c.role}
+              </Badge>
             </div>
-            <p className="mt-1.5 text-xs text-muted-foreground">{c.description}</p>
+            <p className="mt-1.5 break-words text-xs text-muted-foreground">{c.description}</p>
             {c.shadcn.length > 0 && (
               <div className="mt-2 flex flex-wrap gap-1">
                 {c.shadcn.map((s) => (

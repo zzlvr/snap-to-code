@@ -34,7 +34,7 @@ export function PreviewFrame({ files }: { files: GeneratedFile[] }) {
   return (
     <div className="flex h-full flex-col gap-2">
       <div className="flex items-center justify-between gap-2">
-        <div className="inline-flex rounded-md border p-0.5">
+        <div role="group" aria-label="Preview width" className="inline-flex rounded-md border p-0.5">
           {WIDTHS.map((w) => (
             <button
               key={w.label}
@@ -73,7 +73,10 @@ export function PreviewFrame({ files }: { files: GeneratedFile[] }) {
         />
       </div>
       {error && (
-        <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 font-mono text-xs text-destructive">
+        <p
+          role="alert"
+          className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 font-mono text-xs text-destructive"
+        >
           {error.slice(0, 400)}
         </p>
       )}

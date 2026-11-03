@@ -127,16 +127,19 @@ export function Studio() {
           <h2 id="step-model" className="font-heading text-lg font-semibold">
             <span className="mr-2 text-muted-foreground">2</span>Model
           </h2>
-          <SettingsPanel
-            providerId={providerId}
-            profile={profile}
-            disabled={busy}
-            finding={finding}
-            onProvider={setProvider}
-            onChange={patch}
-            onKey={setKey}
-            onFindLocal={() => void findLocal()}
-          />
+          {/* Hidden until saved settings are read, so the default provider never flashes before the real one. */}
+          <div className={loaded ? undefined : "invisible"} aria-busy={!loaded}>
+            <SettingsPanel
+              providerId={providerId}
+              profile={profile}
+              disabled={busy}
+              finding={finding}
+              onProvider={setProvider}
+              onChange={patch}
+              onKey={setKey}
+              onFindLocal={() => void findLocal()}
+            />
+          </div>
         </section>
 
         <div className="space-y-3 border-t pt-6">

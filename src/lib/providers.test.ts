@@ -1,5 +1,31 @@
 import { describe, expect, it } from "vitest";
-import { defaultProfile, getPreset, PROVIDERS, toConfig, validateConfig } from "./providers";
+import { defaultProfile, detectProviderFromKey, getPreset, PROVIDERS, toConfig, validateConfig } from "./providers";
+
+describe("detectProviderFromKey", () => {
+  it.each([
+    ["AIzaSyExampleKey123", "gemini"],
+    ["sk-ant-api03-abc", "anthropic"],
+    ["sk-or-v1-abc", "openrouter"],
+    ["sk-proj-abc", "openai"],
+    ["sk-abc", "openai"],
+    ["  sk-ant-api03-abc  ", "anthropic"],
+  ])("recognises %s as %s", (key, id) => {
+    expect(detectProviderFromKey(key)).toBe(id);
+  });
+
+  it("returns null for unknown or empty keys so the current provider is kept", () => {
+    expect(detectProviderFromKey("")).toBeNull();
+    expect(detectProviderFromKey("gsk_groqkey")).toBeNull();
+    expect(detectProviderFromKey("hello")).toBeNull();
+  });
+
+  it("only returns ids that exist as presets", () => {
+    for (const key of ["AIza1", "sk-ant-1", "sk-or-1", "sk-1"]) {
+      const id = detectProviderFromKey(key)!;
+      expect(PROVIDERS.some((p) => p.id === id)).toBe(true);
+    }
+  });
+});
 
 describe("provider presets", () => {
   it("has unique ids and a supported protocol for each", () => {

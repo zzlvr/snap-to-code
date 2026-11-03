@@ -1,6 +1,8 @@
 "use client";
 
-import { KeyRound } from "lucide-react";
+import { useState } from "react";
+import { ChevronDown, KeyRound, Loader2, ScanSearch } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -12,53 +14,33 @@ interface Props {
   providerId: string;
   profile: ProviderProfile;
   disabled?: boolean;
+  finding?: boolean;
   onProvider: (id: string) => void;
   onChange: (patch: Partial<ProviderProfile>) => void;
+  onKey: (key: string) => void;
+  onFindLocal: () => void;
 }
 
-export function SettingsPanel({ providerId, profile, disabled, onProvider, onChange }: Props) {
+export function SettingsPanel({ providerId, profile, disabled, finding, onProvider, onChange, onKey, onFindLocal }: Props) {
   const preset = getPreset(providerId);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const isLocal = preset.id === "ollama";
+  const isCustom = preset.id === "custom";
+  // Self-hosted setups need the extra fields, so they are never hidden.
+  const advancedShown = advancedOpen || preset.editableBaseUrl;
+  const recognised = !preset.editableBaseUrl && profile.apiKey.trim() !== "";
 
   return (
     <fieldset disabled={disabled} className="min-w-0 space-y-4">
-      <div className="space-y-1.5">
-        <Label htmlFor="provider">Provider</Label>
-        <Select items={PROVIDER_ITEMS} value={providerId} onValueChange={(v) => v && onProvider(v)}>
-          <SelectTrigger id="provider" className="w-full">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {PROVIDER_ITEMS.map((i) => (
-              <SelectItem key={i.value} value={i.value}>
-                {i.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      {preset.editableBaseUrl && (
-        <div className="space-y-1.5">
-          <Label htmlFor="base-url">Base URL</Label>
-          <Input
-            id="base-url"
-            name="base-url"
-            type="url"
-            inputMode="url"
-            autoComplete="off"
-            spellCheck={false}
-            placeholder={preset.defaultBaseUrl}
-            value={profile.baseUrl}
-            onChange={(e) => onChange({ baseUrl: e.target.value })}
-          />
-        </div>
-      )}
-
-      {(preset.needsKey || preset.id === "custom") && (
+      {isLocal ? (
+        <p className="rounded-md border bg-secondary/50 px-3 py-2 text-sm">
+          Using a local Ollama model: no key needed. Details are in Advanced settings.
+        </p>
+      ) : (
         <div className="space-y-1.5">
           <Label htmlFor="apikey" className="flex items-center gap-1.5">
             <KeyRound className="h-3.5 w-3.5" aria-hidden="true" />
-            API key{!preset.needsKey && " (optional)"}
+            API key{isCustom && " (optional)"}
           </Label>
           <Input
             id="apikey"
@@ -66,11 +48,19 @@ export function SettingsPanel({ providerId, profile, disabled, onProvider, onCha
             type="password"
             autoComplete="off"
             spellCheck={false}
-            placeholder="Paste your key…"
+            placeholder="Paste your API key…"
             value={profile.apiKey}
-            onChange={(e) => onChange({ apiKey: e.target.value })}
+            onChange={(e) => onKey(e.target.value)}
           />
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-muted-foreground" aria-live="polite">
+            {recognised ? (
+              <>
+                Detected <strong className="text-foreground">{preset.label.replace(/ \(.*\)$/, "")}</strong>, using{" "}
+                <code>{profile.model}</code>.{" "}
+              </>
+            ) : (
+              <>Works with Gemini, OpenAI, Anthropic and OpenRouter keys. </>
+            )}
             Stored only in this browser and sent straight to the provider.
             {preset.keyUrl && (
               <>
@@ -84,34 +74,88 @@ export function SettingsPanel({ providerId, profile, disabled, onProvider, onCha
                 >
                   {new URL(preset.keyUrl).hostname}
                 </a>
-                . Restrict it to your site&apos;s domain (HTTP referrer) if the provider allows it.
+                .
               </>
             )}
           </p>
         </div>
       )}
 
-      <div className="space-y-1.5">
-        <Label htmlFor="model">Model</Label>
-        <Input
-          id="model"
-          name="model"
-          list="model-presets"
-          autoComplete="off"
-          spellCheck={false}
-          placeholder="Vision-capable model name…"
-          value={profile.model}
-          onChange={(e) => onChange({ model: e.target.value })}
-        />
-        <datalist id="model-presets">
-          {preset.models.map((m) => (
-            <option key={m} value={m} />
-          ))}
-        </datalist>
-        <p className="text-xs text-muted-foreground">
-          {preset.hint ?? "Pick a suggestion or type a model name. It must be able to read images."}
-        </p>
-      </div>
+      <details
+        open={advancedShown}
+        onToggle={(e) => setAdvancedOpen(e.currentTarget.open)}
+        className="group rounded-md border bg-card"
+      >
+        <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-2 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          Advanced settings
+          <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" aria-hidden="true" />
+        </summary>
+        <div className="space-y-4 border-t p-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="provider">Provider</Label>
+            <Select items={PROVIDER_ITEMS} value={providerId} onValueChange={(v) => v && onProvider(v)}>
+              <SelectTrigger id="provider" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {PROVIDER_ITEMS.map((i) => (
+                  <SelectItem key={i.value} value={i.value}>
+                    {i.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {preset.editableBaseUrl && (
+            <div className="space-y-1.5">
+              <Label htmlFor="base-url">Base URL</Label>
+              <Input
+                id="base-url"
+                name="base-url"
+                type="url"
+                inputMode="url"
+                autoComplete="off"
+                spellCheck={false}
+                placeholder={preset.defaultBaseUrl}
+                value={profile.baseUrl}
+                onChange={(e) => onChange({ baseUrl: e.target.value })}
+              />
+            </div>
+          )}
+
+          <div className="space-y-1.5">
+            <Label htmlFor="model">Model</Label>
+            <Input
+              id="model"
+              name="model"
+              list="model-presets"
+              autoComplete="off"
+              spellCheck={false}
+              placeholder="Vision-capable model name…"
+              value={profile.model}
+              onChange={(e) => onChange({ model: e.target.value })}
+            />
+            <datalist id="model-presets">
+              {preset.models.map((m) => (
+                <option key={m} value={m} />
+              ))}
+            </datalist>
+            <p className="text-xs text-muted-foreground">
+              {preset.hint ?? "Pick a suggestion or type a model name. It must be able to read images."}
+            </p>
+          </div>
+
+          <Button type="button" variant="outline" size="sm" className="w-full" onClick={onFindLocal} disabled={finding}>
+            {finding ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+            ) : (
+              <ScanSearch className="h-3.5 w-3.5" aria-hidden="true" />
+            )}
+            Find local models (Ollama, LM Studio)
+          </Button>
+        </div>
+      </details>
     </fieldset>
   );
 }

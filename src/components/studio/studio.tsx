@@ -1,11 +1,12 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Loader2, Sparkles, Square } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSettings } from "@/hooks/use-settings";
+import { detectLocalModels, type LocalModels } from "@/lib/local-detect";
 import { runPipeline } from "@/lib/pipeline";
 import { validateConfig } from "@/lib/providers";
 import type { Analysis, GeneratedFile, ImageData, Stage } from "@/lib/types";
@@ -28,7 +29,9 @@ function Empty({ children }: { children: React.ReactNode }) {
 }
 
 export function Studio() {
-  const { providerId, profile, config, setProvider, patch } = useSettings();
+  const { providerId, profile, config, loaded, touched, setProvider, patch, setKey, applyLocal } = useSettings();
+  const [finding, setFinding] = useState(false);
+  const probed = useRef(false);
   const [image, setImage] = useState<ImageData | null>(null);
   const [stage, setStage] = useState<Stage>("idle");
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
@@ -37,12 +40,45 @@ export function Studio() {
   const abortRef = useRef<AbortController | null>(null);
 
   const busy = stage === "analyzing" || stage === "generating";
+  const configProblem = validateConfig(providerId, config);
+
+  function announceFound(found: LocalModels) {
+    applyLocal(found);
+    toast.success(`Found ${found.models[0]} on ${found.label}. No API key needed.`);
+  }
+
+  async function findLocal() {
+    setFinding(true);
+    const found = await detectLocalModels();
+    setFinding(false);
+    if (found.length === 0) {
+      toast.error(
+        "No local vision models found. Start Ollama (or LM Studio) with a vision model, " +
+          'and for Ollama on a deployed site set OLLAMA_ORIGINS="*".',
+      );
+      return;
+    }
+    announceFound(found[0]);
+  }
+
+  // First visit on a developer machine: if a local vision model is already running, just use it.
+  // Only on localhost, so a deployed site never probes visitors' local ports unprompted.
+  useEffect(() => {
+    if (!loaded || touched || probed.current) return;
+    probed.current = true;
+    if (!["localhost", "127.0.0.1", "[::1]"].includes(window.location.hostname)) return;
+    void detectLocalModels().then((found) => {
+      if (found[0]) {
+        applyLocal(found[0]);
+        toast.success(`Found ${found[0].models[0]} on ${found[0].label}. No API key needed.`);
+      }
+    });
+  }, [loaded, touched, applyLocal]);
 
   async function generate() {
     if (!image) return;
-    const problem = validateConfig(providerId, config);
-    if (problem) {
-      toast.error(problem);
+    if (configProblem) {
+      toast.error(configProblem);
       return;
     }
     const ctrl = new AbortController();
@@ -95,8 +131,11 @@ export function Studio() {
             providerId={providerId}
             profile={profile}
             disabled={busy}
+            finding={finding}
             onProvider={setProvider}
             onChange={patch}
+            onKey={setKey}
+            onFindLocal={() => void findLocal()}
           />
         </section>
 
@@ -119,6 +158,7 @@ export function Studio() {
             {busy && <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />}
             {STAGE_LABEL[stage]}
             {!busy && !image && stage === "idle" && "Add a screenshot to get started."}
+            {!busy && image && stage === "idle" && configProblem}
           </p>
         </div>
       </aside>

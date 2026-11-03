@@ -84,6 +84,19 @@ export const PROVIDERS: ProviderPreset[] = [
 
 export const DEFAULT_PROVIDER_ID = "gemini";
 
+/**
+ * Guesses the provider from the shape of an API key, so a newcomer only has to paste a key.
+ * Returns null when the key is not recognised (the current provider is kept).
+ */
+export function detectProviderFromKey(key: string): string | null {
+  const k = key.trim();
+  if (k.startsWith("sk-ant-")) return "anthropic";
+  if (k.startsWith("sk-or-")) return "openrouter";
+  if (k.startsWith("AIza")) return "gemini";
+  if (k.startsWith("sk-")) return "openai";
+  return null;
+}
+
 export function getPreset(id: string): ProviderPreset {
   return PROVIDERS.find((p) => p.id === id) ?? PROVIDERS[0];
 }

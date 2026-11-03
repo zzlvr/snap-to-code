@@ -59,7 +59,10 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:3000, choose a provider, paste a key, and paste a screenshot.
+Open http://localhost:3000, paste an API key, then paste a screenshot. That is the whole setup:
+
+- **Paste a key and go.** The provider is detected from the key (`AIza…` Gemini, `sk-ant-…` Anthropic, `sk-or-…` OpenRouter, `sk-…` OpenAI) and a sensible default model is chosen. Provider, base URL and model live under *Advanced settings*.
+- **No key at all?** If Ollama or LM Studio is running with a vision model, the app finds it on first launch (on `localhost` only) and uses it. On a deployed site, press *Find local models* in Advanced settings.
 
 ```bash
 npm test        # unit and protocol tests

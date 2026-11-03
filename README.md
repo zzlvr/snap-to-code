@@ -8,6 +8,17 @@ Turn a screenshot of a UI into clean **React + Tailwind CSS + shadcn/ui** code, 
 
 <sub>The demo was recorded against a local mock model that returns a fixed dashboard, so it shows the interface, not the quality of any real model.</sub>
 
+## What it is, and what it isn't
+
+Snap to Code generates the **look** of one screen: a starting point for the front end that a developer then finishes by hand.
+
+- You get static React components with the same layout, colours and structure, filled with placeholder data.
+- You do **not** get a working site: no logic, no forms that submit, no backend, no database, no authentication, no routing between pages.
+- Images and logos become placeholders, and fonts, spacing and colours are approximations.
+- One screenshot produces one screen. Simple pages come out well; dense or unusual layouts need more manual work.
+
+Use it on your own designs, mock-ups and sites you have the right to reuse, or to learn from a layout. Do not publish a copy of someone else's site under its own brand, text and images: that can infringe their rights.
+
 ## Features
 
 - **Fast input**: paste with `Ctrl/⌘ + V`, drag and drop, or pick a file.

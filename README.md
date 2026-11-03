@@ -99,3 +99,7 @@ Push to GitHub and import the repo in Vercel. No environment variables are neede
 
 - The preview uses simplified shadcn/ui components (Button, Card, Table, Tabs, …). Complex ones (dropdown, dialog) render as plain blocks. It loads Tailwind and React from a CDN, so it needs internet access.
 - Output quality depends on the model. Review the code before using it.
+
+## License
+
+[MIT](LICENSE)

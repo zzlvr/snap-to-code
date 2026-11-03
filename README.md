@@ -1,36 +1,55 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Snap to Code
 
-## Getting Started
+Скриншот интерфейса → чистый React-код на **Tailwind CSS** и **shadcn/ui**, разбитый на компоненты (`Sidebar.tsx`, `Header.tsx`, `DataTable.tsx`, …).
 
-First, run the development server:
+## Возможности
+
+- **Быстрый ввод**: `Ctrl/⌘ + V` из буфера, drag-and-drop или выбор файла.
+- **Двухэтапная генерация**: сначала vision-модель анализирует структуру UI (вкладка «Структура»), затем генерирует код по компонентам со стримингом.
+- **Стандарты кода**: только Tailwind-классы, компоненты shadcn/ui, иконки lucide-react, `app/page.tsx` собирает страницу.
+- **Live Preview**: песочница (sandboxed iframe) с адаптивным переключателем Desktop/Tablet/Mobile.
+- **Экспорт**: копирование всех файлов одной кнопкой, ZIP, готовая команда `npx shadcn@latest add …`.
+- **BYOK**: Gemini Vision API (бесплатный лимит в Google AI Studio) или локальный Ollama.
+
+## Приватность
+
+Приложение полностью клиентское, своего бэкенда нет. Ключ Gemini лежит только в `localStorage` вашего браузера, изображения уходят напрямую в Google (или в ваш Ollama).
+
+## Запуск
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Откройте http://localhost:3000, вставьте ключ Gemini ([получить](https://aistudio.google.com/apikey)) и скриншот.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Ollama
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+ollama pull qwen2.5vl:7b
+# для работы с задеплоенного (HTTPS) сайта разрешите CORS:
+OLLAMA_ORIGINS="*" ollama serve
+```
 
-## Learn More
+Выберите «Ollama» в настройках. Локальные модели заметно слабее облачных: для сложных макетов лучше Gemini.
 
-To learn more about Next.js, take a look at the following resources:
+## Деплой
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Push в GitHub → Import в Vercel. Переменные окружения не нужны.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Как устроено
 
-## Deploy on Vercel
+| Файл | Роль |
+| --- | --- |
+| `src/lib/pipeline.ts` | оркестрация: анализ → генерация |
+| `src/lib/llm.ts` | стриминг из Gemini / Ollama прямо из браузера |
+| `src/lib/prompts.ts` | системные промпты и правила кода |
+| `src/lib/parse.ts` | разбор JSON-анализа и блоков `=== FILE: path ===` |
+| `src/lib/preview-html.ts` | рантайм превью: Babel + мини-реализации shadcn/lucide в iframe |
+| `src/lib/export.ts` | копирование, ZIP, определение нужных shadcn-компонентов |
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Ограничения
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Превью использует упрощённые версии shadcn/ui (Button, Card, Table, Tabs и др.); сложные компоненты (dropdown, dialog) отображаются как обычные блоки. Тянет Tailwind/React с CDN, поэтому нужен интернет.
+- Результат зависит от качества модели; код стоит просмотреть перед использованием.

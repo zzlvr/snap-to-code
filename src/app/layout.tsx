@@ -5,12 +5,12 @@ import "./globals.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
-  subsets: ["latin", "cyrillic"],
+  subsets: ["latin"],
 });
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
-  subsets: ["latin", "cyrillic"],
+  subsets: ["latin"],
 });
 
 // Display face for the wordmark and section titles; body stays in Geist.
@@ -22,7 +22,7 @@ const display = Bricolage_Grotesque({
 
 export const metadata: Metadata = {
   title: "Snap to Code",
-  description: "Скриншот интерфейса в чистый React-код на Tailwind и shadcn/ui",
+  description: "Turn a UI screenshot into clean React code with Tailwind and shadcn/ui. Bring any vision model.",
 };
 
 export const viewport: Viewport = {
@@ -32,7 +32,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
-      lang="ru"
+      lang="en"
       className={`${geistSans.variable} ${geistMono.variable} ${display.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
@@ -40,7 +40,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           href="#studio"
           className="sr-only focus-visible:not-sr-only focus-visible:fixed focus-visible:left-4 focus-visible:top-4 focus-visible:z-50 focus-visible:rounded-md focus-visible:bg-foreground focus-visible:px-3 focus-visible:py-2 focus-visible:text-sm focus-visible:text-background"
         >
-          Перейти к студии
+          Skip to the studio
         </a>
         {children}
         <Toaster richColors />

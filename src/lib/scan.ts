@@ -8,12 +8,12 @@ export interface ScanWarning {
 const ALLOWED_MODULES = /^(react|react-dom|lucide-react|next\/(link|image|navigation)|@\/.+|\.{1,2}\/.*)$/;
 
 const RULES: { re: RegExp; message: string }[] = [
-  { re: /\b(fetch|XMLHttpRequest|WebSocket|EventSource|sendBeacon)\b/, message: "сетевой запрос" },
-  { re: /\beval\s*\(|\bnew\s+Function\b/, message: "динамическое выполнение кода (eval / Function)" },
-  { re: /dangerouslySetInnerHTML|\.innerHTML\s*=|document\.write/, message: "вставка сырого HTML" },
-  { re: /document\.cookie|localStorage|sessionStorage|indexedDB/, message: "доступ к cookie или хранилищу" },
-  { re: /window\.(open|location)|location\.(href|assign|replace)\s*=/, message: "переход или открытие окна" },
-  { re: /<script\b|<iframe\b/i, message: "тег script или iframe" },
+  { re: /\b(fetch|XMLHttpRequest|WebSocket|EventSource|sendBeacon)\b/, message: "network request" },
+  { re: /\beval\s*\(|\bnew\s+Function\b/, message: "dynamic code execution (eval / Function)" },
+  { re: /dangerouslySetInnerHTML|\.innerHTML\s*=|document\.write/, message: "raw HTML injection" },
+  { re: /document\.cookie|localStorage|sessionStorage|indexedDB/, message: "access to cookies or storage" },
+  { re: /window\.(open|location)|location\.(href|assign|replace)\s*=/, message: "navigation or window opening" },
+  { re: /<script\b|<iframe\b/i, message: "script or iframe tag" },
 ];
 
 /**
@@ -28,7 +28,7 @@ export function scanGeneratedCode(files: GeneratedFile[]): ScanWarning[] {
       if (rule.re.test(f.code)) out.push({ path: f.path, message: rule.message });
     }
     for (const m of f.code.matchAll(/(?:from\s+|import\s*\(\s*|require\s*\(\s*|import\s+)["']([^"']+)["']/g)) {
-      if (!ALLOWED_MODULES.test(m[1])) out.push({ path: f.path, message: `неожиданный импорт «${m[1]}»` });
+      if (!ALLOWED_MODULES.test(m[1])) out.push({ path: f.path, message: `unexpected import "${m[1]}"` });
     }
   }
   return out;

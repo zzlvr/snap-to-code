@@ -1,39 +1,43 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import type { LLMConfig } from "@/lib/types";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  DEFAULT_PROVIDER_ID,
+  defaultProfile,
+  getPreset,
+  toConfig,
+  type ProviderProfile,
+} from "@/lib/providers";
 
-const KEY = "snap-to-code:settings:v1";
+const KEY = "snap-to-code:settings:v2";
 
-export const DEFAULT_SETTINGS: LLMConfig = {
-  provider: "gemini",
-  apiKey: "",
-  model: "gemini-2.5-flash",
-  ollamaUrl: "http://localhost:11434",
-};
+interface Stored {
+  provider: string;
+  profiles: Record<string, ProviderProfile>;
+}
 
-export const MODEL_PRESETS: Record<LLMConfig["provider"], string[]> = {
-  gemini: ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.5-flash-lite"],
-  ollama: ["qwen2.5vl:7b", "llama3.2-vision", "gemma3:12b", "minicpm-v"],
-};
+const INITIAL: Stored = { provider: DEFAULT_PROVIDER_ID, profiles: {} };
 
-/** Settings (including the BYOK API key) live only in this browser's localStorage. */
+/**
+ * Settings (including BYOK API keys) live only in this browser's localStorage.
+ * Each provider keeps its own key, model and base URL, so switching back and forth loses nothing.
+ */
 export function useSettings() {
-  const [settings, setSettings] = useState<LLMConfig>(DEFAULT_SETTINGS);
+  const [stored, setStored] = useState<Stored>(INITIAL);
 
   useEffect(() => {
     try {
       const raw = localStorage.getItem(KEY);
       // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrating from localStorage after mount
-      if (raw) setSettings({ ...DEFAULT_SETTINGS, ...JSON.parse(raw) });
+      if (raw) setStored({ ...INITIAL, ...JSON.parse(raw) });
     } catch {
       /* storage unavailable: keep defaults */
     }
   }, []);
 
-  const update = useCallback((patch: Partial<LLMConfig>) => {
-    setSettings((prev) => {
-      const next = { ...prev, ...patch };
+  const save = useCallback((fn: (prev: Stored) => Stored) => {
+    setStored((prev) => {
+      const next = fn(prev);
       try {
         localStorage.setItem(KEY, JSON.stringify(next));
       } catch {
@@ -43,5 +47,22 @@ export function useSettings() {
     });
   }, []);
 
-  return { settings, update };
+  const providerId = getPreset(stored.provider).id;
+  const profile: ProviderProfile = useMemo(
+    () => ({ ...defaultProfile(providerId), ...stored.profiles[providerId] }),
+    [providerId, stored.profiles],
+  );
+  const config = useMemo(() => toConfig(providerId, profile), [providerId, profile]);
+
+  const setProvider = useCallback((id: string) => save((p) => ({ ...p, provider: id })), [save]);
+  const patch = useCallback(
+    (change: Partial<ProviderProfile>) =>
+      save((p) => {
+        const id = getPreset(p.provider).id;
+        return { ...p, profiles: { ...p.profiles, [id]: { ...defaultProfile(id), ...p.profiles[id], ...change } } };
+      }),
+    [save],
+  );
+
+  return { providerId, profile, config, setProvider, patch };
 }

@@ -3,17 +3,17 @@ import type { Analysis } from "@/lib/types";
 
 export function AnalysisView({ analysis }: { analysis: Analysis | null }) {
   if (!analysis) {
-    return <p className="py-16 text-center text-sm text-muted-foreground">Разбор структуры появится после первого шага.</p>;
+    return <p className="py-16 text-center text-sm text-muted-foreground">The structure breakdown appears after the first step.</p>;
   }
   return (
     <div className="space-y-5">
       <div className="space-y-1">
         <h3 className="text-sm font-semibold">{analysis.summary}</h3>
         <p className="text-sm text-muted-foreground">
-          <span className="font-medium text-foreground">Стиль:</span> {analysis.style}
+          <span className="font-medium text-foreground">Style:</span> {analysis.style}
         </p>
         <p className="text-sm text-muted-foreground">
-          <span className="font-medium text-foreground">Раскладка:</span> {analysis.layout}
+          <span className="font-medium text-foreground">Layout:</span> {analysis.layout}
         </p>
       </div>
       <ul className="grid gap-3 sm:grid-cols-2">

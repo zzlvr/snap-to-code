@@ -25,12 +25,12 @@ export function CodeViewer({ files, busy }: { files: GeneratedFile[]; busy: bool
       toast.success(msg);
       setTimeout(() => setCopied(null), 1500);
     } catch {
-      toast.error("Не удалось скопировать");
+      toast.error("Could not copy to the clipboard");
     }
   }
 
   if (files.length === 0) {
-    return <p className="py-16 text-center text-sm text-muted-foreground">Файлы появятся здесь, как только модель начнёт их писать.</p>;
+    return <p className="py-16 text-center text-sm text-muted-foreground">Files appear here as soon as the model starts writing them.</p>;
   }
 
   return (
@@ -39,7 +39,7 @@ export function CodeViewer({ files, busy }: { files: GeneratedFile[]; busy: bool
         <div role="alert" className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm">
           <p className="flex items-center gap-2 font-medium text-destructive">
             <ShieldAlert className="h-4 w-4" aria-hidden="true" />
-            В коде есть подозрительные конструкции. Проверьте его, прежде чем копировать в проект.
+            The code contains suspicious constructs. Review it before copying it into a project.
           </p>
           <ul className="mt-2 space-y-0.5 text-xs text-muted-foreground">
             {warnings.map((w, i) => (
@@ -51,9 +51,9 @@ export function CodeViewer({ files, busy }: { files: GeneratedFile[]; busy: bool
         </div>
       )}
       <div className="flex flex-wrap items-center gap-2">
-        <Button size="sm" disabled={busy} onClick={() => copy(filesToText(files), "all", "Все файлы скопированы")}>
+        <Button size="sm" disabled={busy} onClick={() => copy(filesToText(files), "all", "All files copied")}>
           {copied === "all" ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-          Копировать всё
+          Copy all files
         </Button>
         <Button
           size="sm"
@@ -64,14 +64,14 @@ export function CodeViewer({ files, busy }: { files: GeneratedFile[]; busy: bool
           <Download className="h-3.5 w-3.5" /> ZIP
         </Button>
         {cmd && (
-          <Button size="sm" variant="ghost" onClick={() => copy(cmd, "cmd", "Команда shadcn скопирована")}>
+          <Button size="sm" variant="ghost" onClick={() => copy(cmd, "cmd", "shadcn command copied")}>
             <Terminal className="h-3.5 w-3.5" /> shadcn add
           </Button>
         )}
       </div>
 
       <div className="grid gap-3 md:grid-cols-[200px_1fr]">
-        <ul className="flex gap-1 overflow-x-auto md:flex-col" aria-label="Файлы">
+        <ul className="flex gap-1 overflow-x-auto md:flex-col" aria-label="Files">
           {files.map((f) => (
             <li key={f.path}>
               <button
@@ -94,9 +94,9 @@ export function CodeViewer({ files, busy }: { files: GeneratedFile[]; busy: bool
             <span className="font-mono text-xs text-zinc-400">{current?.path}</span>
             <button
               type="button"
-              onClick={() => current && copy(current.code, current.path, `${current.path} скопирован`)}
+              onClick={() => current && copy(current.code, current.path, `${current.path} copied`)}
               className="rounded p-1 text-zinc-400 hover:text-zinc-100"
-              aria-label="Копировать файл"
+              aria-label="Copy file"
             >
               {copied === current?.path ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
             </button>

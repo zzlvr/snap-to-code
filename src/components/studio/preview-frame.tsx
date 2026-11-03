@@ -18,7 +18,7 @@ export function PreviewFrame({ files }: { files: GeneratedFile[] }) {
   const [error, setError] = useState<string | null>(null);
   const frameRef = useRef<HTMLIFrameElement>(null);
 
-  // "Обновить" only remounts the iframe (new key), so the HTML itself depends on files alone.
+  // "Reload" only remounts the iframe (new key), so the HTML itself depends on files alone.
   const html = useMemo(() => buildPreviewHtml(files), [files]);
 
   useEffect(() => {
@@ -57,7 +57,7 @@ export function PreviewFrame({ files }: { files: GeneratedFile[] }) {
             setNonce((n) => n + 1);
           }}
         >
-          <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" /> Обновить
+          <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" /> Reload
         </Button>
       </div>
       <div className="flex-1 overflow-auto rounded-md border bg-[repeating-conic-gradient(var(--muted)_0%_25%,transparent_0%_50%)] bg-[length:16px_16px] overscroll-contain">
@@ -78,7 +78,7 @@ export function PreviewFrame({ files }: { files: GeneratedFile[] }) {
         </p>
       )}
       <p className="text-xs text-muted-foreground">
-        Превью использует упрощённые версии shadcn/ui и подгружает Tailwind/React с CDN, поэтому нужен интернет.
+        The preview uses simplified shadcn/ui components and loads Tailwind and React from a CDN, so it needs an internet connection.
       </p>
     </div>
   );

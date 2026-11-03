@@ -20,13 +20,13 @@ export default function Home() {
               Snap to Code
             </h1>
             <p className="mt-1.5 text-sm text-muted-foreground">
-              Скриншот на входе — компоненты React на выходе.
+              Screenshot in, React components out. Bring any vision model.
             </p>
           </div>
         </div>
         <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <Lock className="h-3.5 w-3.5" aria-hidden="true" />
-          Ключ и картинки не покидают браузер: бэкенда нет.
+          Your key and images never leave the browser: there is no backend.
         </p>
       </header>
       <Studio />

@@ -123,7 +123,7 @@ describe("parseAnalysis", () => {
   });
 
   it("throws when components are missing or empty", () => {
-    expect(() => parseAnalysis(JSON.stringify({ summary: "x" }))).toThrow(/компонент/);
-    expect(() => parseAnalysis(JSON.stringify({ components: [] }))).toThrow(/компонент/);
+    expect(() => parseAnalysis(JSON.stringify({ summary: "x" }))).toThrow(/no components/);
+    expect(() => parseAnalysis(JSON.stringify({ components: [] }))).toThrow(/no components/);
   });
 });

@@ -42,7 +42,7 @@ export function Dropzone({ image, disabled, scanning, onImage }: Props) {
     try {
       onImage(await fileToImageData(file));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Не удалось прочитать изображение");
+      toast.error(e instanceof Error ? e.message : "Could not read the image");
     }
   }
 
@@ -75,7 +75,7 @@ export function Dropzone({ image, disabled, scanning, onImage }: Props) {
             src={image.dataUrl}
             width={image.width}
             height={image.height}
-            alt="Загруженный скриншот интерфейса"
+            alt="Uploaded interface screenshot"
             className="max-h-72 w-full object-contain"
           />
           {scanning && (
@@ -91,7 +91,7 @@ export function Dropzone({ image, disabled, scanning, onImage }: Props) {
             variant="secondary"
             className="absolute right-4 top-4 h-8 w-8 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
             onClick={() => onImage(null)}
-            aria-label="Убрать скриншот"
+            aria-label="Remove screenshot"
           >
             <X className="h-4 w-4" aria-hidden="true" />
           </Button>
@@ -135,10 +135,10 @@ export function Dropzone({ image, disabled, scanning, onImage }: Props) {
       <Brackets active={dragging} />
       <ImageUp className="h-7 w-7 text-muted-foreground" aria-hidden="true" />
       <div className="space-y-1.5">
-        <p className="text-sm font-medium">Перетащите скриншот или выберите файл</p>
+        <p className="text-sm font-medium">Drop a screenshot or choose a file</p>
         <p className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
           <ClipboardPaste className="h-3.5 w-3.5" aria-hidden="true" />
-          Можно вставить из буфера:&nbsp;
+          Or paste from the clipboard:&nbsp;
           <kbd className="rounded border bg-background px-1.5 py-0.5 font-mono text-[10px]">Ctrl/⌘&nbsp;+&nbsp;V</kbd>
         </p>
       </div>

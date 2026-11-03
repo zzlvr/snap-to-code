@@ -48,7 +48,7 @@ export async function runPipeline(
   }
   const files = parseFiles(text);
   if (files.length === 0) {
-    throw new Error("Модель не вернула файлов. Попробуйте ещё раз или выберите другую модель.");
+    throw new Error("The model returned no files. Try again or pick a different model.");
   }
   cb.onFiles(files);
   return files;

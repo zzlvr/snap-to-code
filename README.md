@@ -1,65 +1,89 @@
 # Snap to Code
 
-Скриншот интерфейса → чистый React-код на **Tailwind CSS** и **shadcn/ui**, разбитый на компоненты (`Sidebar.tsx`, `Header.tsx`, `DataTable.tsx`, …).
+Turn a screenshot of a UI into clean **React + Tailwind CSS + shadcn/ui** code, split into components (`Sidebar.tsx`, `Header.tsx`, `DataTable.tsx`, …). Bring any vision model.
 
-## Возможности
+## Features
 
-- **Быстрый ввод**: `Ctrl/⌘ + V` из буфера, drag-and-drop или выбор файла.
-- **Двухэтапная генерация**: сначала vision-модель анализирует структуру UI (вкладка «Структура»), затем генерирует код по компонентам со стримингом.
-- **Стандарты кода**: только Tailwind-классы, компоненты shadcn/ui, иконки lucide-react, `app/page.tsx` собирает страницу.
-- **Live Preview**: песочница (sandboxed iframe) с адаптивным переключателем Desktop/Tablet/Mobile.
-- **Экспорт**: копирование всех файлов одной кнопкой, ZIP, готовая команда `npx shadcn@latest add …`.
-- **BYOK**: Gemini Vision API (бесплатный лимит в Google AI Studio) или локальный Ollama.
+- **Fast input**: paste with `Ctrl/⌘ + V`, drag and drop, or pick a file.
+- **Two-step generation**: a vision model first analyses the UI structure (the *Structure* tab), then writes one file per component, streamed live.
+- **Code standards**: Tailwind utility classes only, shadcn/ui components, lucide-react icons; `app/page.tsx` composes the page.
+- **Live preview**: sandboxed iframe with a Desktop / Tablet / Mobile switcher.
+- **Export**: copy every file in one click, download a ZIP, or copy the ready-made `npx shadcn@latest add …` command.
+- **Bring your own model (BYOK)**: Gemini, OpenAI, Anthropic, OpenRouter, Ollama, or any OpenAI-compatible server.
 
-## Приватность
+## Supported models
 
-Приложение полностью клиентское, своего бэкенда нет. Ключ Gemini лежит только в `localStorage` вашего браузера, изображения уходят напрямую в Google (или в ваш Ollama).
+The model must accept images. The model name is always free text, so new models work the day they ship.
 
-## Безопасность
+| Provider | Protocol | Needs a key | Notes |
+| --- | --- | --- | --- |
+| Google Gemini | Gemini SDK | yes | Free tier in [Google AI Studio](https://aistudio.google.com/apikey) |
+| OpenAI | OpenAI chat completions | yes | |
+| Anthropic Claude | Anthropic Messages | yes | Called directly from the browser with Anthropic's browser-access header |
+| OpenRouter | OpenAI chat completions | yes | Hundreds of models behind one key |
+| Ollama | Ollama `/api/chat` | no | Local. Run `ollama pull qwen2.5vl:7b` |
+| **Custom** | OpenAI chat completions | optional | Any server with a base URL: LM Studio, vLLM, llama.cpp, Groq, Together, Mistral, DeepSeek, xAI, LiteLLM, Azure, … |
 
-Код приходит от модели, а на текст внутри скриншота модель можно «уговорить», поэтому он считается недоверенным:
+Because requests go straight from your browser to the provider, the provider must allow CORS for the site's origin. Most hosted APIs do; for local servers see below.
 
-- **Превью в песочнице**: `iframe sandbox="allow-scripts"` без `allow-same-origin`, внутри CSP с `connect-src 'none'` (код не может отправить данные наружу) и скриптами только с трёх CDN, четыре из которых проверяются по SRI.
-- **Сканер кода** предупреждает о `fetch`, `eval`, `dangerouslySetInnerHTML`, доступе к хранилищам и импортах вне белого списка. Это эвристика, а не гарантия: код всё равно нужно просмотреть.
-- **Пути файлов** из ответа модели очищаются от `..` и абсолютных путей, чтобы ZIP не мог записать файл за пределы папки распаковки.
-- **Ключ Gemini** лежит в `localStorage`. Ограничьте его в консоли Google по HTTP-рефереру домена, на котором вы деплоите приложение.
-- Заголовки `X-Frame-Options`, `nosniff`, `Referrer-Policy`, `Permissions-Policy`.
+### Ollama and other local servers
 
-## Запуск
+```bash
+ollama pull qwen2.5vl:7b
+# Needed only when using a deployed (HTTPS) copy of this app:
+OLLAMA_ORIGINS="*" ollama serve
+```
+
+Local models are noticeably weaker than hosted ones; complex layouts usually need a stronger model.
+
+## Privacy
+
+The app is fully client-side and has no backend. API keys live in your browser's `localStorage` (one profile per provider) and are sent only to the provider you choose. Images go straight to that provider too.
+
+## Security
+
+Generated code is untrusted: text inside a screenshot can steer the model.
+
+- **Sandboxed preview**: `iframe sandbox="allow-scripts"` without `allow-same-origin`, with a CSP of `connect-src 'none'` (code cannot send data out) and scripts only from three CDNs, four of them pinned with SRI hashes.
+- **Code scanner**: warns about `fetch`, `eval`, `dangerouslySetInnerHTML`, storage access and imports outside an allow-list. It is a heuristic, not a guarantee: always review the code.
+- **File paths** returned by the model are sanitised (no `..`, no absolute paths) so a ZIP cannot write outside its extraction folder.
+- **API keys** sit in `localStorage`. If the provider supports it, restrict the key to your site's domain (HTTP referrer).
+- Response headers: `X-Frame-Options`, `nosniff`, `Referrer-Policy`, `Permissions-Policy`.
+
+## Getting started
 
 ```bash
 npm install
 npm run dev
 ```
 
-Откройте http://localhost:3000, вставьте ключ Gemini ([получить](https://aistudio.google.com/apikey)) и скриншот.
-
-### Ollama
+Open http://localhost:3000, choose a provider, paste a key, and paste a screenshot.
 
 ```bash
-ollama pull qwen2.5vl:7b
-# для работы с задеплоенного (HTTPS) сайта разрешите CORS:
-OLLAMA_ORIGINS="*" ollama serve
+npm test        # unit and protocol tests
+npm run lint
+npm run build
 ```
 
-Выберите «Ollama» в настройках. Локальные модели заметно слабее облачных: для сложных макетов лучше Gemini.
+## Deploy
 
-## Деплой
+Push to GitHub and import the repo in Vercel. No environment variables are needed.
 
-Push в GitHub → Import в Vercel. Переменные окружения не нужны.
+## How it works
 
-## Как устроено
-
-| Файл | Роль |
+| File | Role |
 | --- | --- |
-| `src/lib/pipeline.ts` | оркестрация: анализ → генерация |
-| `src/lib/llm.ts` | стриминг из Gemini / Ollama прямо из браузера |
-| `src/lib/prompts.ts` | системные промпты и правила кода |
-| `src/lib/parse.ts` | разбор JSON-анализа и блоков `=== FILE: path ===` |
-| `src/lib/preview-html.ts` | рантайм превью: Babel + мини-реализации shadcn/lucide в iframe |
-| `src/lib/export.ts` | копирование, ZIP, определение нужных shadcn-компонентов |
+| `src/lib/pipeline.ts` | orchestration: analyse, then generate |
+| `src/lib/providers.ts` | provider presets, config validation |
+| `src/lib/llm.ts` | streaming clients for the four protocols, straight from the browser |
+| `src/lib/sse.ts` | Server-Sent Events reader and per-protocol delta parsers |
+| `src/lib/prompts.ts` | system prompts and code rules |
+| `src/lib/parse.ts` | parses the JSON analysis and `=== FILE: path ===` blocks |
+| `src/lib/scan.ts` | heuristic scanner for suspicious generated code |
+| `src/lib/preview-html.ts` | preview runtime: Babel plus small shadcn/lucide stand-ins inside the iframe |
+| `src/lib/export.ts` | copy, ZIP, detection of the shadcn components needed |
 
-## Ограничения
+## Limitations
 
-- Превью использует упрощённые версии shadcn/ui (Button, Card, Table, Tabs и др.); сложные компоненты (dropdown, dialog) отображаются как обычные блоки. Тянет Tailwind/React с CDN, поэтому нужен интернет.
-- Результат зависит от качества модели; код стоит просмотреть перед использованием.
+- The preview uses simplified shadcn/ui components (Button, Card, Table, Tabs, …). Complex ones (dropdown, dialog) render as plain blocks. It loads Tailwind and React from a CDN, so it needs internet access.
+- Output quality depends on the model. Review the code before using it.

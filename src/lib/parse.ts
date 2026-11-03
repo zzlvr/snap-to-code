@@ -41,10 +41,10 @@ function stripFences(code: string) {
 export function parseAnalysis(text: string): Analysis {
   const start = text.indexOf("{");
   const end = text.lastIndexOf("}");
-  if (start < 0 || end < start) throw new Error("Модель не вернула JSON с анализом");
+  if (start < 0 || end < start) throw new Error("The model did not return a JSON analysis. Try again or pick a different model.");
   const raw = JSON.parse(text.slice(start, end + 1));
   if (!Array.isArray(raw.components) || raw.components.length === 0) {
-    throw new Error("В анализе нет компонентов");
+    throw new Error("The analysis contains no components. Try again or pick a different model.");
   }
   return {
     summary: String(raw.summary ?? ""),

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSettings } from "@/hooks/use-settings";
 import { runPipeline } from "@/lib/pipeline";
+import { validateConfig } from "@/lib/providers";
 import type { Analysis, GeneratedFile, ImageData, Stage } from "@/lib/types";
 import { AnalysisView } from "./analysis-view";
 import { CodeViewer } from "./code-viewer";
@@ -16,9 +17,9 @@ import { SettingsPanel } from "./settings-panel";
 
 const STAGE_LABEL: Record<Stage, string> = {
   idle: "",
-  analyzing: "Шаг 1 из 2: разбираю структуру интерфейса…",
-  generating: "Шаг 2 из 2: пишу компоненты…",
-  done: "Готово",
+  analyzing: "Step 1 of 2: reading the interface structure…",
+  generating: "Step 2 of 2: writing components…",
+  done: "Done",
   error: "",
 };
 
@@ -27,7 +28,7 @@ function Empty({ children }: { children: React.ReactNode }) {
 }
 
 export function Studio() {
-  const { settings, update } = useSettings();
+  const { providerId, profile, config, setProvider, patch } = useSettings();
   const [image, setImage] = useState<ImageData | null>(null);
   const [stage, setStage] = useState<Stage>("idle");
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
@@ -39,6 +40,11 @@ export function Studio() {
 
   async function generate() {
     if (!image) return;
+    const problem = validateConfig(providerId, config);
+    if (problem) {
+      toast.error(problem);
+      return;
+    }
     const ctrl = new AbortController();
     abortRef.current = ctrl;
     setAnalysis(null);
@@ -46,7 +52,7 @@ export function Studio() {
     setTab("analysis");
     try {
       const result = await runPipeline(
-        settings,
+        config,
         image,
         {
           onStage: (s) => {
@@ -67,7 +73,7 @@ export function Studio() {
         return;
       }
       setStage("error");
-      toast.error(e instanceof Error ? e.message : "Что-то пошло не так. Попробуйте ещё раз.");
+      toast.error(e instanceof Error ? e.message : "Something went wrong. Try again.");
     }
   }
 
@@ -76,22 +82,28 @@ export function Studio() {
       <aside className="space-y-6">
         <section aria-labelledby="step-shot" className="space-y-3">
           <h2 id="step-shot" className="font-heading text-lg font-semibold">
-            <span className="mr-2 text-muted-foreground">1</span>Скриншот
+            <span className="mr-2 text-muted-foreground">1</span>Screenshot
           </h2>
           <Dropzone image={image} disabled={busy} scanning={stage === "analyzing"} onImage={setImage} />
         </section>
 
         <section aria-labelledby="step-model" className="space-y-3 border-t pt-6">
           <h2 id="step-model" className="font-heading text-lg font-semibold">
-            <span className="mr-2 text-muted-foreground">2</span>Модель
+            <span className="mr-2 text-muted-foreground">2</span>Model
           </h2>
-          <SettingsPanel settings={settings} disabled={busy} onChange={update} />
+          <SettingsPanel
+            providerId={providerId}
+            profile={profile}
+            disabled={busy}
+            onProvider={setProvider}
+            onChange={patch}
+          />
         </section>
 
         <div className="space-y-3 border-t pt-6">
           {busy ? (
             <Button size="lg" variant="outline" className="w-full" onClick={() => abortRef.current?.abort()}>
-              <Square className="h-4 w-4" aria-hidden="true" /> Остановить
+              <Square className="h-4 w-4" aria-hidden="true" /> Stop
             </Button>
           ) : (
             <Button
@@ -100,31 +112,31 @@ export function Studio() {
               disabled={!image}
               onClick={generate}
             >
-              <Sparkles className="h-4 w-4" aria-hidden="true" /> Сгенерировать код
+              <Sparkles className="h-4 w-4" aria-hidden="true" /> Generate code
             </Button>
           )}
           <p className="flex min-h-5 items-center gap-2 text-sm text-muted-foreground" role="status" aria-live="polite">
             {busy && <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />}
             {STAGE_LABEL[stage]}
-            {!busy && !image && stage === "idle" && "Добавьте скриншот, чтобы начать."}
+            {!busy && !image && stage === "idle" && "Add a screenshot to get started."}
           </p>
         </div>
       </aside>
 
-      <section aria-label="Результат" className="min-w-0 rounded-md border bg-card p-5">
+      <section aria-label="Result" className="min-w-0 rounded-md border bg-card p-5">
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList>
             <TabsTrigger value="preview" disabled={files.length === 0 || busy}>
-              Превью
+              Preview
             </TabsTrigger>
-            <TabsTrigger value="code">Код{files.length > 0 && ` (${files.length})`}</TabsTrigger>
-            <TabsTrigger value="analysis">Структура</TabsTrigger>
+            <TabsTrigger value="code">Code{files.length > 0 && ` (${files.length})`}</TabsTrigger>
+            <TabsTrigger value="analysis">Structure</TabsTrigger>
           </TabsList>
           <TabsContent value="preview" className="mt-4">
             {files.length > 0 && !busy ? (
               <PreviewFrame files={files} />
             ) : (
-              <Empty>Здесь появится живое превью, когда код будет готов.</Empty>
+              <Empty>The live preview appears here once the code is ready.</Empty>
             )}
           </TabsContent>
           <TabsContent value="code" className="mt-4">

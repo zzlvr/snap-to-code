@@ -1,10 +1,12 @@
-export type Provider = "gemini" | "ollama";
+/** Wire protocol spoken to the model. Many providers share one (e.g. "openai"). */
+export type Protocol = "gemini" | "openai" | "anthropic" | "ollama";
 
 export interface LLMConfig {
-  provider: Provider;
+  protocol: Protocol;
   apiKey: string;
   model: string;
-  ollamaUrl: string;
+  /** Unused for the Gemini SDK. */
+  baseUrl: string;
 }
 
 export interface ImageData {

@@ -9,13 +9,23 @@ export interface LLMConfig {
   baseUrl: string;
 }
 
-export interface ImageData {
+/** One image as sent to the model. */
+export interface ImagePart {
   mimeType: string;
   base64: string;
+}
+
+/**
+ * A screenshot of one page. `dataUrl`, `width` and `height` describe the whole page (for the UI);
+ * `parts` are the images sent to the model, top to bottom. A tall page, or several screenshots of
+ * one page, becomes several parts so the model never has to shrink it.
+ */
+export interface ImageData extends ImagePart {
   /** data: URL for displaying in the UI */
   dataUrl: string;
   width: number;
   height: number;
+  parts: ImagePart[];
 }
 
 export interface AnalysisComponent {

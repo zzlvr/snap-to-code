@@ -1,6 +1,6 @@
 import { streamLLM } from "./llm";
 import { parseAnalysis, parseFiles } from "./parse";
-import { ANALYSIS_SYSTEM, GENERATION_SYSTEM, generationPrompt } from "./prompts";
+import { ANALYSIS_SYSTEM, GENERATION_SYSTEM, analysisPrompt, generationPrompt } from "./prompts";
 import type { Analysis, GeneratedFile, ImageData, LLMConfig } from "./types";
 
 interface Callbacks {
@@ -20,8 +20,8 @@ export async function runPipeline(
   let text = "";
   for await (const chunk of streamLLM(cfg, {
     system: ANALYSIS_SYSTEM,
-    prompt: "Analyse this UI screenshot.",
-    image,
+    prompt: analysisPrompt(image.parts.length),
+    images: image.parts,
     json: true,
     signal,
   })) {
@@ -35,8 +35,8 @@ export async function runPipeline(
   let last = 0;
   for await (const chunk of streamLLM(cfg, {
     system: GENERATION_SYSTEM,
-    prompt: generationPrompt(analysis),
-    image,
+    prompt: generationPrompt(analysis, image.parts.length),
+    images: image.parts,
     signal,
   })) {
     text += chunk;

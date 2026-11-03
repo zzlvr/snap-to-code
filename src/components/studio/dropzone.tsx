@@ -24,11 +24,11 @@ export function Brackets({ active }: { active?: boolean }) {
 }
 
 interface Props {
-  onFile: (file: File | undefined) => void;
+  onFiles: (files: File[]) => void;
 }
 
 /** The empty state of the app: one big viewfinder asking for a screenshot. */
-export function Dropzone({ onFile }: Props) {
+export function Dropzone({ onFiles }: Props) {
   const [dragging, setDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -40,10 +40,11 @@ export function Dropzone({ onFile }: Props) {
         type="file"
         name="screenshot"
         accept="image/*"
+        multiple
         className="hidden"
         tabIndex={-1}
         onChange={(e) => {
-          onFile(e.target.files?.[0]);
+          onFiles([...(e.target.files ?? [])]);
           e.target.value = "";
         }}
       />
@@ -61,7 +62,7 @@ export function Dropzone({ onFile }: Props) {
         onDrop={(e) => {
           e.preventDefault();
           setDragging(false);
-          onFile(e.dataTransfer.files[0]);
+          onFiles([...e.dataTransfer.files]);
         }}
         className={cn(
           "relative flex h-[min(52vh,440px)] min-h-72 w-full flex-col items-center justify-center gap-4 bg-card px-6 text-center transition-colors",
@@ -73,11 +74,14 @@ export function Dropzone({ onFile }: Props) {
         <ImageUp className="h-9 w-9 text-muted-foreground" aria-hidden="true" />
         {/* Spans only: a <button> may contain phrasing content, not <div>/<p>. */}
         <span className="flex flex-col items-center gap-2">
-          <span className="font-heading text-xl font-semibold">Drop a screenshot or choose a file</span>
+          <span className="font-heading text-xl font-semibold">Drop screenshots or choose files</span>
           <span className="flex items-center justify-center gap-1.5 text-sm text-muted-foreground">
             <ClipboardPaste className="h-4 w-4" aria-hidden="true" />
             Or paste from the clipboard:&nbsp;
             <kbd className="rounded border bg-background px-1.5 py-0.5 font-mono text-xs">Ctrl/⌘&nbsp;+&nbsp;V</kbd>
+          </span>
+          <span className="text-sm text-muted-foreground">
+            Long page? Add several screenshots, top first, or one tall capture.
           </span>
         </span>
       </button>

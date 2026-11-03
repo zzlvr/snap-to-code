@@ -1,26 +1,23 @@
 "use client";
 
 import { useCallback, useEffect, useRef } from "react";
-import { toast } from "sonner";
-import { fileToImageData } from "@/lib/image";
-import type { ImageData } from "@/lib/types";
+
+const isImage = (f: File) => f.type.startsWith("image/");
 
 /**
- * Turns image files into `ImageData`: used by drop, file picker and Ctrl/Cmd+V paste.
- * Returns `accept(file)`. The window-level paste listener is registered once and always
+ * Collects image files from drop, the file picker and Ctrl/Cmd+V paste and hands them over as a list.
+ * Returns `accept(files)`. The window-level paste listener is registered once and always
  * calls the latest callback through a ref.
  */
-export function useImageIntake(onImage: (img: ImageData) => void, disabled?: boolean) {
+export function useImageIntake(onFiles: (files: File[]) => void, disabled?: boolean) {
   const accept = useCallback(
-    async (file: File | undefined | null) => {
-      if (!file || disabled) return;
-      try {
-        onImage(await fileToImageData(file));
-      } catch (e) {
-        toast.error(e instanceof Error ? e.message : "Could not read the image");
-      }
+    (files: FileList | File[] | null | undefined) => {
+      if (!files || disabled) return;
+      const images = [...files].filter(isImage);
+      // Not an image at all (a text file, say): let the loader explain it with its own message.
+      onFiles(images.length > 0 ? images : [...files].slice(0, 1));
     },
-    [onImage, disabled],
+    [onFiles, disabled],
   );
 
   const acceptRef = useRef(accept);
@@ -32,10 +29,13 @@ export function useImageIntake(onImage: (img: ImageData) => void, disabled?: boo
     function onPaste(e: ClipboardEvent) {
       const t = e.target as HTMLElement | null;
       if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA")) return;
-      const item = [...(e.clipboardData?.items ?? [])].find((i) => i.type.startsWith("image/"));
-      if (!item) return; // plain-text paste is never touched
+      const files = [...(e.clipboardData?.items ?? [])]
+        .filter((i) => i.type.startsWith("image/"))
+        .map((i) => i.getAsFile())
+        .filter((f): f is File => f !== null);
+      if (files.length === 0) return; // plain-text paste is never touched
       e.preventDefault();
-      void acceptRef.current(item.getAsFile());
+      acceptRef.current(files);
     }
     window.addEventListener("paste", onPaste);
     return () => window.removeEventListener("paste", onPaste);

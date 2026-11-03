@@ -2,15 +2,10 @@ import { createServer, type IncomingMessage, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { streamLLM } from "./llm";
-import type { ImageData, LLMConfig } from "./types";
+import type { ImagePart, LLMConfig } from "./types";
 
-const image: ImageData = {
-  mimeType: "image/jpeg",
-  base64: "QUJD",
-  dataUrl: "data:image/jpeg;base64,QUJD",
-  width: 1,
-  height: 1,
-};
+const image: ImagePart = { mimeType: "image/jpeg", base64: "QUJD" };
+const second: ImagePart = { mimeType: "image/jpeg", base64: "REVG" };
 
 interface Seen {
   url: string;
@@ -40,9 +35,9 @@ beforeAll(async () => {
 
 afterAll(() => new Promise<void>((r) => server.close(() => r())));
 
-async function run(cfg: LLMConfig, json = false) {
+async function run(cfg: LLMConfig, json = false, images: ImagePart[] = [image]) {
   let out = "";
-  for await (const chunk of streamLLM(cfg, { system: "SYS", prompt: "PROMPT", image, json })) out += chunk;
+  for await (const chunk of streamLLM(cfg, { system: "SYS", prompt: "PROMPT", images, json })) out += chunk;
   return out;
 }
 
@@ -65,11 +60,21 @@ describe("OpenAI-compatible protocol", () => {
     expect(seen.body.messages[0]).toEqual({ role: "system", content: "SYS" });
     expect(seen.body.messages[1].content).toEqual([
       { type: "text", text: "PROMPT" },
-      { type: "image_url", image_url: { url: image.dataUrl } },
+      { type: "image_url", image_url: { url: "data:image/jpeg;base64,QUJD" } },
     ]);
     // Sampling params are omitted on purpose: several models reject them.
     expect(seen.body.temperature).toBeUndefined();
     expect(seen.body.response_format).toBeUndefined();
+  });
+
+  it("sends several images of one page in order", async () => {
+    respond = (res) => res.end("data: [DONE]\n\n");
+    await run(cfg(), false, [image, second]);
+    expect(seen.body.messages[1].content).toEqual([
+      { type: "text", text: "PROMPT" },
+      { type: "image_url", image_url: { url: "data:image/jpeg;base64,QUJD" } },
+      { type: "image_url", image_url: { url: "data:image/jpeg;base64,REVG" } },
+    ]);
   });
 
   it("omits the Authorization header when no key is set (local servers)", async () => {
@@ -119,6 +124,14 @@ describe("Anthropic protocol", () => {
     });
   });
 
+  it("sends several images of one page in order, all before the text", async () => {
+    respond = (res) => res.end('event: message_stop\ndata: {"type":"message_stop"}\n\n');
+    await run(cfg(), false, [image, second]);
+    const content = seen.body.messages[0].content;
+    expect(content.map((c: { type: string }) => c.type)).toEqual(["image", "image", "text"]);
+    expect(content[1].source.data).toBe("REVG");
+  });
+
   it("throws on stream error events", async () => {
     respond = (res) => {
       res.writeHead(200, { "Content-Type": "text/event-stream" });
@@ -141,6 +154,12 @@ describe("Ollama protocol", () => {
     expect(seen.url).toBe("/api/chat");
     expect(seen.body.format).toBe("json");
     expect(seen.body.messages[1].images).toEqual(["QUJD"]);
+  });
+
+  it("sends several images of one page in order", async () => {
+    respond = (res) => res.end('{"message":{"content":"x"},"done":true}\n');
+    await run(cfg(), false, [image, second]);
+    expect(seen.body.messages[1].images).toEqual(["QUJD", "REVG"]);
   });
 
   it("does not force JSON format for code generation", async () => {

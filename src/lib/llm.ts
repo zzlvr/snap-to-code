@@ -1,10 +1,11 @@
 import { anthropicDelta, errorMessageFrom, openaiDelta, readSSE } from "./sse";
-import type { ImageData, LLMConfig } from "./types";
+import type { ImagePart, LLMConfig } from "./types";
 
 export interface StreamOptions {
   system: string;
   prompt: string;
-  image: ImageData;
+  /** One or more images of the same page, top to bottom. */
+  images: ImagePart[];
   json?: boolean;
   signal?: AbortSignal;
 }
@@ -51,7 +52,7 @@ async function* streamGemini(cfg: LLMConfig, o: StreamOptions) {
         role: "user",
         parts: [
           { text: o.prompt },
-          { inlineData: { mimeType: o.image.mimeType, data: o.image.base64 } },
+          ...o.images.map((img) => ({ inlineData: { mimeType: img.mimeType, data: img.base64 } })),
         ],
       },
     ],
@@ -87,7 +88,7 @@ async function* streamOpenAI(cfg: LLMConfig, o: StreamOptions) {
             role: "user",
             content: [
               { type: "text", text: o.prompt },
-              { type: "image_url", image_url: { url: o.image.dataUrl } },
+              ...o.images.map((img) => ({ type: "image_url", image_url: { url: `data:${img.mimeType};base64,${img.base64}` } })),
             ],
           },
         ],
@@ -124,7 +125,7 @@ async function* streamAnthropic(cfg: LLMConfig, o: StreamOptions) {
           {
             role: "user",
             content: [
-              { type: "image", source: { type: "base64", media_type: o.image.mimeType, data: o.image.base64 } },
+              ...o.images.map((img) => ({ type: "image", source: { type: "base64", media_type: img.mimeType, data: img.base64 } })),
               { type: "text", text: o.prompt },
             ],
           },
@@ -151,7 +152,7 @@ async function* streamOllama(cfg: LLMConfig, o: StreamOptions) {
         options: { temperature: 0.2, num_ctx: 16384 },
         messages: [
           { role: "system", content: o.system },
-          { role: "user", content: o.prompt, images: [o.image.base64] },
+          { role: "user", content: o.prompt, images: o.images.map((img) => img.base64) },
         ],
       }),
     },

@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Loader2, Settings2, Sparkles, Square } from "lucide-react";
+import { ImagePlus, Loader2, Settings2, Sparkles, Square, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useImageIntake } from "@/hooks/use-image-intake";
 import { useSettings } from "@/hooks/use-settings";
+import { filesToImageData } from "@/lib/image";
 import { detectLocalModels, type LocalModels } from "@/lib/local-detect";
 import { runPipeline } from "@/lib/pipeline";
 import { getPreset, validateConfig } from "@/lib/providers";
@@ -36,6 +37,11 @@ export function Studio() {
   const [finding, setFinding] = useState(false);
   const probed = useRef(false);
   const [image, setImage] = useState<ImageData | null>(null);
+  // The screenshots the page is built from, in order. Kept in a ref too so quick consecutive pastes never race.
+  const [sourceCount, setSourceCount] = useState(0);
+  const sources = useRef<File[]>([]);
+  const queue = useRef<Promise<void>>(Promise.resolve());
+  const addInput = useRef<HTMLInputElement>(null);
   const [stage, setStage] = useState<Stage>("idle");
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [files, setFiles] = useState<GeneratedFile[]>([]);
@@ -52,10 +58,30 @@ export function Studio() {
     setFiles([]);
     setTab("compare");
   }
-  const accept = useImageIntake((img) => {
-    setImage(img);
-    resetResult();
-  }, busy);
+
+  /** Rebuilds the page from a new list of screenshots. Calls run one after another. */
+  function setSources(change: (current: File[]) => File[]) {
+    queue.current = queue.current.then(async () => {
+      const next = change(sources.current);
+      if (next.length === 0) {
+        sources.current = [];
+        setSourceCount(0);
+        setImage(null);
+        resetResult();
+        return;
+      }
+      try {
+        const img = await filesToImageData(next);
+        sources.current = next;
+        setSourceCount(next.length);
+        setImage(img);
+        resetResult();
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Could not read the image");
+      }
+    });
+  }
+  const accept = useImageIntake((files) => setSources((cur) => [...cur, ...files]), busy);
 
   function announceFound(found: LocalModels) {
     applyLocal(found);
@@ -164,7 +190,7 @@ export function Studio() {
               model: your key and images never leave the browser.
             </p>
           </div>
-          <Dropzone onFile={(f) => void accept(f)} />
+          <Dropzone onFiles={accept} />
         </section>
       ) : (
         <>
@@ -172,18 +198,36 @@ export function Studio() {
             <p className="flex min-h-5 items-center gap-2 text-sm text-muted-foreground" role="status" aria-live="polite">
               {busy && <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />}
               {STAGE_LABEL[stage]}
-              {stage === "idle" && !configProblem && "Ready. Generate code from this screenshot."}
+              {stage === "idle" &&
+                !configProblem &&
+                `Ready. ${sourceCount > 1 ? `${sourceCount} screenshots stacked top to bottom. ` : ""}${
+                  image.parts.length > 1 ? `The model will see them in ${image.parts.length} parts. ` : ""
+                }Generate code from this ${sourceCount > 1 ? "page" : "screenshot"}.`}
               {stage === "idle" && configProblem && configProblem}
             </p>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                disabled={busy}
-                onClick={() => {
-                  setImage(null);
-                  resetResult();
+            <div className="flex flex-wrap gap-2">
+              <input
+                ref={addInput}
+                type="file"
+                name="more-screenshots"
+                accept="image/*"
+                multiple
+                className="hidden"
+                tabIndex={-1}
+                onChange={(e) => {
+                  accept(e.target.files);
+                  e.target.value = "";
                 }}
-              >
+              />
+              <Button variant="outline" disabled={busy} onClick={() => addInput.current?.click()}>
+                <ImagePlus className="h-4 w-4" aria-hidden="true" /> Add part
+              </Button>
+              {sourceCount > 1 && (
+                <Button variant="outline" disabled={busy} onClick={() => setSources((cur) => cur.slice(0, -1))}>
+                  <Undo2 className="h-4 w-4" aria-hidden="true" /> Undo last
+                </Button>
+              )}
+              <Button variant="outline" disabled={busy} onClick={() => setSources(() => [])}>
                 New screenshot
               </Button>
               {busy ? (

@@ -15,19 +15,30 @@ Snap to Code generates the **look** of one screen: a starting point for the fron
 - You get static React components with the same layout, colours and structure, filled with placeholder data.
 - You do **not** get a working site: no logic, no forms that submit, no backend, no database, no authentication, no routing between pages.
 - Images and logos become placeholders, and fonts, spacing and colours are approximations.
-- One screenshot produces one screen. Simple pages come out well; dense or unusual layouts need more manual work.
+- It builds one page at a time. For a long page, add several screenshots (see *Long pages* below). Simple pages come out well; dense or unusual layouts need more manual work.
 
 Use it on your own designs, mock-ups and sites you have the right to reuse, or to learn from a layout. Do not publish a copy of someone else's site under its own brand, text and images: that can infringe their rights.
 
 ## Features
 
-- **Fast input**: paste with `Ctrl/⌘ + V`, drag and drop, or pick a file.
+- **Fast input**: paste with `Ctrl/⌘ + V`, drag and drop, or pick files.
+- **Long pages**: add several screenshots of one page, or one tall capture. They are stacked top to bottom, and the model receives them as consecutive slices of a single page (see below).
 - **Two-step generation**: a vision model first analyses the UI structure (the *Structure* tab), then writes one file per component, streamed live.
 - **Code standards**: Tailwind utility classes only, shadcn/ui components, lucide-react icons; `app/page.tsx` composes the page.
 - **Before / after compare**: your screenshot and the rendered result side by side with one draggable divider (mouse, touch or arrow keys), so you can see at a glance how faithful the generated UI is.
 - **Live preview**: sandboxed iframe with a Desktop / Tablet / Mobile switcher.
 - **Export**: copy every file in one click, download a ZIP, or copy the ready-made `npx shadcn@latest add …` command.
 - **Bring your own model (BYOK)**: Gemini, OpenAI, Anthropic, OpenRouter, Ollama, or any OpenAI-compatible server.
+
+## Long pages
+
+A page rarely fits in one screenshot. Snap to Code treats everything you add as **one page, top to bottom**:
+
+- **Several screenshots**: paste them one after another (`Ctrl/⌘ + V` each time), pick several files, or press *Add part*. They are stacked in the order you add them. *Undo last* removes the most recent part, *New screenshot* starts over. Up to 8 screenshots.
+- **One tall capture** (a full-page screenshot) works too.
+- **Slicing**: images sent to the model are at most 1568 px on a side, because larger ones get shrunk by some providers (Claude, for one) until small text is unreadable. A tall page is therefore cut into slices of at most 1568 px that overlap by 48 px, and the model is told they are parts of one page. An ordinary single screenshot, including a phone screenshot, is sent as one image as before.
+- **Limits**: a page taller than 12,000 px once scaled is refused with a message; split it into two runs. Every extra slice is extra image tokens, so long pages cost more with paid APIs and run into free-tier limits sooner.
+- **Capturing**: scroll in steps of one screen and take a shot at each step. A little overlap between shots is fine and the model is told to ignore repeated rows, but overlap is never removed for you, so avoid large repeats.
 
 ## Supported models
 

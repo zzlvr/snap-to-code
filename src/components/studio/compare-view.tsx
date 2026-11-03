@@ -5,22 +5,26 @@ import { ChevronsLeftRight, Loader2 } from "lucide-react";
 import { usePreviewStatus } from "@/hooks/use-preview-status";
 import { buildPreviewHtml } from "@/lib/preview-html";
 import type { GeneratedFile, ImageData } from "@/lib/types";
+import { cn } from "@/lib/utils";
 import { Brackets } from "./dropzone";
 
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
+/** A long page: it scrolls instead of shrinking to fit the screen. */
+const isTall = (image: ImageData) => image.height / image.width > 1.2;
 
 /** The screenshot alone, with the scan sweep while the model is reading it. */
 export function OriginalStage({ image, scanning }: { image: ImageData; scanning?: boolean }) {
+  const tall = isTall(image);
   return (
     <div className="relative bg-card p-4">
-      <div className="relative mx-auto w-fit max-w-full overflow-hidden">
+      <div className={cn("relative mx-auto w-fit max-w-full", tall ? "max-h-[70vh] overflow-y-auto" : "overflow-hidden")}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={image.dataUrl}
           width={image.width}
           height={image.height}
           alt="Uploaded interface screenshot"
-          className="block max-h-[70vh] w-auto max-w-full"
+          className={cn("block w-auto max-w-full", !tall && "max-h-[70vh]")}
         />
         {scanning && (
           <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
@@ -46,6 +50,7 @@ export function CompareView({ image, files }: { image: ImageData; files: Generat
   const { error, ready } = usePreviewStatus(frameRef);
 
   const html = useMemo(() => buildPreviewHtml(files), [files]);
+  const tall = isTall(image);
   const viewportW = clamp(image.width, 360, 1920);
   const viewportH = Math.round((image.height * viewportW) / image.width);
 
@@ -121,7 +126,7 @@ export function CompareView({ image, files }: { image: ImageData; files: Generat
           aria-valuemax={100}
           aria-valuenow={Math.round(pos)}
           aria-valuetext={`${Math.round(pos)}% original`}
-          className="group absolute inset-y-0 z-10 w-8 -translate-x-1/2 cursor-ew-resize touch-none outline-none"
+          className={cn("group absolute inset-y-0 z-10 w-8 -translate-x-1/2 cursor-ew-resize touch-none outline-none", tall && "flex justify-center")}
           style={{ left: `${pos}%` }}
           onPointerDown={(e) => {
             e.currentTarget.setPointerCapture(e.pointerId);
@@ -144,7 +149,13 @@ export function CompareView({ image, files }: { image: ImageData; files: Generat
           }}
         >
           <span className="absolute inset-y-0 left-1/2 w-0.5 -translate-x-1/2 bg-lime shadow-[0_0_0_1px_rgba(16,17,20,0.35)]" />
-          <span className="absolute left-1/2 top-1/2 flex h-9 w-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-foreground bg-lime text-foreground shadow group-focus-visible:ring-2 group-focus-visible:ring-ring group-focus-visible:ring-offset-2">
+          <span
+            className={cn(
+              "flex h-9 w-9 items-center justify-center rounded-full border-2 border-foreground bg-lime text-foreground shadow group-focus-visible:ring-2 group-focus-visible:ring-ring group-focus-visible:ring-offset-2",
+              // On a tall page the handle stays in view while you scroll; on a short one it sits in the middle.
+              tall ? "sticky top-[45vh] self-start" : "absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2",
+            )}
+          >
             <ChevronsLeftRight className="h-4 w-4" aria-hidden="true" />
           </span>
         </div>

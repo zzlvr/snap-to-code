@@ -15,7 +15,7 @@ Look at the screenshot and describe its structure. Respond with ONLY valid JSON,
     }
   ]
 }
-Rules: 3 to 8 components, top-level sections only (no tiny atoms). Do not include the page itself as a component.`;
+Rules: 3 to 8 components (up to 12 for a long page with many sections), top-level sections only (no tiny atoms). Do not include the page itself as a component.`;
 
 export const GENERATION_SYSTEM = `You are a senior frontend engineer. You convert a UI screenshot into clean, production-quality React code.
 
@@ -36,10 +36,24 @@ Output format (mandatory): ONLY file blocks, no prose, no markdown fences. Each 
 <code>
 Put each marker on its own line, before the file's code. The last file must be app/page.tsx.`;
 
-export function generationPrompt(analysis: Analysis): string {
+/** Tells the model that several images are slices of one page, not several pages. Empty for a single image. */
+export function partsNote(count: number): string {
+  if (count <= 1) return "";
+  return (
+    `\n\nThe screenshot is delivered as ${count} images that are consecutive slices of ONE page, top to bottom. ` +
+    `Neighbouring slices overlap slightly, so a row near a cut can appear at the bottom of one image and the top of the next: ` +
+    `treat it as one row and never repeat content. Describe and build a single page.`
+  );
+}
+
+export function analysisPrompt(parts: number): string {
+  return `Analyse this UI screenshot.${partsNote(parts)}`;
+}
+
+export function generationPrompt(analysis: Analysis, parts = 1): string {
   return `Here is the structural analysis of the screenshot (use it as the component plan, but trust the image for visual details):
 
 ${JSON.stringify(analysis, null, 2)}
 
-Generate one file per component listed, then app/page.tsx that composes them.`;
+Generate one file per component listed, then app/page.tsx that composes them.${partsNote(parts)}`;
 }

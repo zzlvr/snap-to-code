@@ -22,7 +22,7 @@ const display = Bricolage_Grotesque({
 
 export const metadata: Metadata = {
   title: "Snap to Code",
-  description: "Turn a UI screenshot into clean React code with Tailwind and shadcn/ui. Bring any vision model.",
+  description: "Turn a UI screenshot into clean React code with Tailwind and shadcn/ui. Bring your own vision model and API key.",
 };
 
 export const viewport: Viewport = {

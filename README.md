@@ -1,6 +1,6 @@
 # Snap to Code
 
-Turn a screenshot of a UI into clean **React + Tailwind CSS + shadcn/ui** code, split into components (`Sidebar.tsx`, `Header.tsx`, `DataTable.tsx`, …). Bring any vision model.
+Turn a screenshot of a UI into clean **React + Tailwind CSS + shadcn/ui** code, split into components (`Sidebar.tsx`, `Header.tsx`, `DataTable.tsx`, …). Bring your own vision model and API key.
 
 ## Features
 
@@ -13,7 +13,9 @@ Turn a screenshot of a UI into clean **React + Tailwind CSS + shadcn/ui** code, 
 
 ## Supported models
 
-The model must accept images. The model name is always free text, so new models work the day they ship.
+Any model that **accepts images** and is reachable through **an API** works. The model name is free text, so new models work the day they ship.
+
+**Chat subscriptions are not API access.** ChatGPT Plus, Claude Pro and similar plans do not come with an API key and cannot be used here. You need an API key from the provider (billed per use), a free-tier key such as Gemini's, or a local model.
 
 | Provider | Protocol | Needs a key | Notes |
 | --- | --- | --- | --- |
@@ -24,7 +26,7 @@ The model must accept images. The model name is always free text, so new models 
 | Ollama | Ollama `/api/chat` | no | Local. Run `ollama pull qwen2.5vl:7b` |
 | **Custom** | OpenAI chat completions | optional | Any server with a base URL: LM Studio, vLLM, llama.cpp, Groq, Together, Mistral, DeepSeek, xAI, LiteLLM, Azure, … |
 
-Because requests go straight from your browser to the provider, the provider must allow CORS for the site's origin. Most hosted APIs do; for local servers see below.
+Not supported: text-only models, services without a public API, and APIs that do not allow browser requests (CORS) and are not OpenAI-compatible. Because requests go straight from your browser to the provider, the provider must allow CORS for the site's origin. Most hosted APIs do; for local servers see below.
 
 ### Ollama and other local servers
 

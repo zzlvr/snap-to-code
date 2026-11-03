@@ -99,7 +99,7 @@ export function SettingsPanel({ providerId, profile, disabled, onProvider, onCha
           list="model-presets"
           autoComplete="off"
           spellCheck={false}
-          placeholder="Any vision-capable model…"
+          placeholder="Vision-capable model name…"
           value={profile.model}
           onChange={(e) => onChange({ model: e.target.value })}
         />
@@ -109,7 +109,7 @@ export function SettingsPanel({ providerId, profile, disabled, onProvider, onCha
           ))}
         </datalist>
         <p className="text-xs text-muted-foreground">
-          {preset.hint ?? "Pick a suggestion or type any model name. It must be able to read images."}
+          {preset.hint ?? "Pick a suggestion or type a model name. It must be able to read images."}
         </p>
       </div>
     </fieldset>

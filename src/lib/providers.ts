@@ -14,9 +14,10 @@ export interface ProviderPreset {
 }
 
 /**
- * Any vision-capable model works: pick a preset, or use "Custom" with any
+ * Any vision-capable model with an API works: pick a preset, or use "Custom" with an
  * OpenAI-compatible endpoint (LM Studio, vLLM, llama.cpp, Groq, Together, Mistral,
  * DeepSeek, xAI, LiteLLM, Azure, ...). The model name is always free text.
+ * Chat subscriptions (ChatGPT Plus, Claude Pro) do not include API access.
  */
 export const PROVIDERS: ProviderPreset[] = [
   {

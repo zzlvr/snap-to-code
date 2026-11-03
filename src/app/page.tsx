@@ -20,7 +20,7 @@ export default function Home() {
               Snap to Code
             </h1>
             <p className="mt-1.5 text-sm text-muted-foreground">
-              Screenshot in, React components out. Bring any vision model.
+              Screenshot in, React components out. Bring your own vision model.
             </p>
           </div>
         </div>

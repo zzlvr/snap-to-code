@@ -6,11 +6,15 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useImageIntake } from "@/hooks/use-image-intake";
+import { useLiveModels } from "@/hooks/use-live-models";
 import { useSettings } from "@/hooks/use-settings";
 import { filesToImageData } from "@/lib/image";
 import { detectLocalModels, type LocalModels } from "@/lib/local-detect";
+import { bestModel, fetchModelIds } from "@/lib/models";
 import { runPipeline } from "@/lib/pipeline";
 import { getPreset, validateConfig } from "@/lib/providers";
+import { ApiError } from "@/lib/sse";
+import type { LLMConfig } from "@/lib/types";
 import type { Analysis, GeneratedFile, ImageData, Stage } from "@/lib/types";
 import { AnalysisView } from "./analysis-view";
 import { CodeViewer } from "./code-viewer";
@@ -49,6 +53,7 @@ export function Studio() {
   const abortRef = useRef<AbortController | null>(null);
 
   const busy = stage === "analyzing" || stage === "generating";
+  const liveModels = useLiveModels(providerId, config, (model) => patch({ model }));
   const configProblem = validateConfig(providerId, config);
   const resultReady = stage === "done" && files.length > 0;
 
@@ -116,7 +121,20 @@ export function Studio() {
     });
   }, [loaded, touched, applyLocal]);
 
-  async function generate() {
+  /**
+   * The provider says the model does not exist (it was retired or renamed): ask it what is available,
+   * switch to the best model and report it. Returns the new config, or null if there is nothing better.
+   */
+  async function recoverModel(cfg: LLMConfig): Promise<LLMConfig | null> {
+    const ids = await fetchModelIds(providerId, cfg);
+    const next = bestModel(providerId, ids, cfg.model);
+    if (!next) return null;
+    patch({ model: next });
+    toast.info(`${cfg.model} is not available for your key. Switched to ${next} and trying again.`);
+    return { ...cfg, model: next };
+  }
+
+  async function generate(cfg: LLMConfig = config, retried = false) {
     if (!image) return;
     if (configProblem) {
       setSettingsOpen(true); // a missing key is fixed in the settings dialog, not by an error toast
@@ -129,7 +147,7 @@ export function Studio() {
     setTab("compare");
     try {
       const result = await runPipeline(
-        config,
+        cfg,
         image,
         {
           onStage: (s) => {
@@ -148,6 +166,10 @@ export function Studio() {
       if (ctrl.signal.aborted) {
         setStage("idle");
         return;
+      }
+      if (!retried && e instanceof ApiError && e.status === 404) {
+        const next = await recoverModel(cfg);
+        if (next) return generate(next, true);
       }
       setStage("error");
       toast.error(e instanceof Error ? e.message : "Something went wrong. Try again.");
@@ -237,7 +259,7 @@ export function Studio() {
               ) : (
                 <Button
                   className="border border-foreground/15 bg-lime font-semibold text-foreground hover:bg-lime/80"
-                  onClick={generate}
+                  onClick={() => void generate()}
                 >
                   <Sparkles className="h-4 w-4" aria-hidden="true" /> {resultReady ? "Regenerate" : "Generate code"}
                 </Button>
@@ -284,6 +306,7 @@ export function Studio() {
         providerId={providerId}
         profile={profile}
         finding={finding}
+        liveModels={liveModels}
         onProvider={setProvider}
         onChange={patch}
         onKey={setKey}

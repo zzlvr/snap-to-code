@@ -57,6 +57,15 @@ Any model that **accepts images** and is reachable through **an API** works. The
 
 Not supported: text-only models, services without a public API, and APIs that do not allow browser requests (CORS) and are not OpenAI-compatible. Because requests go straight from your browser to the provider, the provider must allow CORS for the site's origin. Most hosted APIs do; for local servers see below.
 
+### Model names change: the app keeps up
+
+Providers rename and retire models all the time, so no model name is hard-coded as a requirement:
+
+- **Live model list.** With a Gemini, OpenAI, Anthropic or OpenRouter key, the app asks the provider which models the key can use, fills the model suggestions from that list, and, while you have not chosen a model yourself, picks the newest suitable one (for Gemini, the newest stable Flash).
+- **Automatic recovery.** If a request fails because the model no longer exists (HTTP 404), the app fetches the list, switches to the best remaining model, tells you, and retries once.
+- **Your choice wins.** A model you typed or picked is never replaced behind your back; only the recovery above can change it, and only after the provider has refused it.
+- **Fallback.** The built-in suggestions in `src/lib/providers.ts` are used only when the list cannot be fetched. Keep them roughly current, but nothing breaks when they are not.
+
 ### Ollama and other local servers
 
 ```bash

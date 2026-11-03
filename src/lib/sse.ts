@@ -38,6 +38,17 @@ export function anthropicDelta(json: unknown): string {
 }
 
 /** Extracts the most useful message from an error response body. */
+/** An HTTP error from a model API. `status` lets callers react, for example to a retired model (404). */
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
 export function errorMessageFrom(status: number, bodyText: string): string {
   let detail = bodyText.slice(0, 300);
   try {
@@ -62,7 +73,7 @@ export function errorMessageFrom(status: number, bodyText: string): string {
  * The Gemini SDK throws errors whose message is JSON, sometimes JSON inside JSON.
  * Unwraps it down to one readable sentence plus a hint for the usual causes.
  */
-export function geminiErrorMessage(err: unknown): string {
+export function parseGeminiError(err: unknown): ApiError | Error {
   let message = err instanceof Error ? err.message : String(err);
   const statusProp = (err as { status?: unknown } | null)?.status;
   let code = typeof statusProp === "number" ? statusProp : 0;
@@ -89,5 +100,7 @@ export function geminiErrorMessage(err: unknown): string {
         : code === 429
           ? " Rate limit or free-tier quota reached: wait a while, or choose another model."
           : "";
-  return code ? `Gemini returned ${code}: ${message}${hint}` : message;
+  return code ? new ApiError(`Gemini returned ${code}: ${message}${hint}`, code) : new Error(message);
 }
+
+export const geminiErrorMessage = (err: unknown): string => parseGeminiError(err).message;

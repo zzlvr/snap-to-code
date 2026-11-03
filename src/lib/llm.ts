@@ -1,4 +1,4 @@
-import { anthropicDelta, errorMessageFrom, geminiErrorMessage, openaiDelta, readSSE } from "./sse";
+import { anthropicDelta, ApiError, errorMessageFrom, openaiDelta, parseGeminiError, readSSE } from "./sse";
 import type { ImagePart, LLMConfig } from "./types";
 
 export interface StreamOptions {
@@ -36,7 +36,7 @@ async function post(url: string, init: RequestInit, signal?: AbortSignal): Promi
     );
   }
   if (!res.ok || !res.body) {
-    throw new Error(errorMessageFrom(res.status, await res.text().catch(() => "")));
+    throw new ApiError(errorMessageFrom(res.status, await res.text().catch(() => "")), res.status);
   }
   return res;
 }
@@ -49,7 +49,7 @@ async function* streamGemini(cfg: LLMConfig, o: StreamOptions) {
     yield* geminiChunks(ai, cfg, o);
   } catch (e) {
     if (o.signal?.aborted || (e instanceof DOMException && e.name === "AbortError")) throw e;
-    throw new Error(geminiErrorMessage(e));
+    throw parseGeminiError(e);
   }
 }
 

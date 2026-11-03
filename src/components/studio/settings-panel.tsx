@@ -14,13 +14,15 @@ interface Props {
   profile: ProviderProfile;
   disabled?: boolean;
   finding?: boolean;
+  /** Models the provider reported for this key; empty when unknown. */
+  liveModels?: string[];
   onProvider: (id: string) => void;
   onChange: (patch: Partial<ProviderProfile>) => void;
   onKey: (key: string) => void;
   onFindLocal: () => void;
 }
 
-export function SettingsPanel({ providerId, profile, disabled, finding, onProvider, onChange, onKey, onFindLocal }: Props) {
+export function SettingsPanel({ providerId, profile, disabled, finding, liveModels = [], onProvider, onChange, onKey, onFindLocal }: Props) {
   const preset = getPreset(providerId);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const isLocal = preset.id === "ollama";
@@ -138,12 +140,14 @@ export function SettingsPanel({ providerId, profile, disabled, finding, onProvid
               onChange={(e) => onChange({ model: e.target.value })}
             />
             <datalist id="model-presets">
-              {preset.models.map((m) => (
+              {[...new Set([...liveModels, ...preset.models])].map((m) => (
                 <option key={m} value={m} />
               ))}
             </datalist>
             <p className="text-xs text-muted-foreground">
-              {preset.hint ?? "Pick a suggestion or type a model name. It must be able to read images."}
+              {liveModels.length > 0
+                ? `${liveModels.length} models found for your key. Pick one or type a name; it must be able to read images.`
+                : (preset.hint ?? "Pick a suggestion or type a model name. It must be able to read images.")}
             </p>
           </div>
 

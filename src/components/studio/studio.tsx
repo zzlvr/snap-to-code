@@ -4,7 +4,6 @@ import { useRef, useState } from "react";
 import { Loader2, Sparkles, Square } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSettings } from "@/hooks/use-settings";
 import { runPipeline } from "@/lib/pipeline";
@@ -17,11 +16,15 @@ import { SettingsPanel } from "./settings-panel";
 
 const STAGE_LABEL: Record<Stage, string> = {
   idle: "",
-  analyzing: "Шаг 1/2: анализирую структуру интерфейса…",
-  generating: "Шаг 2/2: генерирую компоненты…",
+  analyzing: "Шаг 1 из 2: разбираю структуру интерфейса…",
+  generating: "Шаг 2 из 2: пишу компоненты…",
   done: "Готово",
   error: "",
 };
+
+function Empty({ children }: { children: React.ReactNode }) {
+  return <p className="py-16 text-center text-sm text-muted-foreground">{children}</p>;
+}
 
 export function Studio() {
   const { settings, update } = useSettings();
@@ -64,70 +67,73 @@ export function Studio() {
         return;
       }
       setStage("error");
-      toast.error(e instanceof Error ? e.message : "Что-то пошло не так");
+      toast.error(e instanceof Error ? e.message : "Что-то пошло не так. Попробуйте ещё раз.");
     }
   }
 
   return (
-    <div className="mx-auto grid w-full max-w-7xl flex-1 gap-6 px-4 pb-10 lg:grid-cols-[360px_1fr]">
-      <aside className="space-y-4">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">1. Скриншот</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Dropzone image={image} disabled={busy} onImage={setImage} />
-          </CardContent>
-        </Card>
+    <div id="studio" className="mx-auto grid w-full max-w-7xl flex-1 gap-8 px-4 pb-12 lg:grid-cols-[360px_1fr]">
+      <aside className="space-y-6">
+        <section aria-labelledby="step-shot" className="space-y-3">
+          <h2 id="step-shot" className="font-heading text-lg font-semibold">
+            <span className="mr-2 text-muted-foreground">1</span>Скриншот
+          </h2>
+          <Dropzone image={image} disabled={busy} scanning={stage === "analyzing"} onImage={setImage} />
+        </section>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">2. Модель</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <SettingsPanel settings={settings} disabled={busy} onChange={update} />
-          </CardContent>
-        </Card>
+        <section aria-labelledby="step-model" className="space-y-3 border-t pt-6">
+          <h2 id="step-model" className="font-heading text-lg font-semibold">
+            <span className="mr-2 text-muted-foreground">2</span>Модель
+          </h2>
+          <SettingsPanel settings={settings} disabled={busy} onChange={update} />
+        </section>
 
-        {busy ? (
-          <Button size="lg" variant="outline" className="w-full" onClick={() => abortRef.current?.abort()}>
-            <Square className="h-4 w-4" /> Остановить
-          </Button>
-        ) : (
-          <Button size="lg" className="w-full" disabled={!image} onClick={generate}>
-            <Sparkles className="h-4 w-4" /> Сгенерировать код
-          </Button>
-        )}
-        {busy && (
-          <p className="flex items-center gap-2 text-sm text-muted-foreground" role="status">
-            <Loader2 className="h-4 w-4 animate-spin" /> {STAGE_LABEL[stage]}
+        <div className="space-y-3 border-t pt-6">
+          {busy ? (
+            <Button size="lg" variant="outline" className="w-full" onClick={() => abortRef.current?.abort()}>
+              <Square className="h-4 w-4" aria-hidden="true" /> Остановить
+            </Button>
+          ) : (
+            <Button
+              size="lg"
+              className="w-full border border-foreground/15 bg-lime font-semibold text-foreground hover:bg-lime/80"
+              disabled={!image}
+              onClick={generate}
+            >
+              <Sparkles className="h-4 w-4" aria-hidden="true" /> Сгенерировать код
+            </Button>
+          )}
+          <p className="flex min-h-5 items-center gap-2 text-sm text-muted-foreground" role="status" aria-live="polite">
+            {busy && <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />}
+            {STAGE_LABEL[stage]}
+            {!busy && !image && stage === "idle" && "Добавьте скриншот, чтобы начать."}
           </p>
-        )}
+        </div>
       </aside>
 
-      <section className="min-w-0">
-        <Card className="h-full">
-          <CardContent className="pt-6">
-            <Tabs value={tab} onValueChange={setTab}>
-              <TabsList>
-                <TabsTrigger value="preview" disabled={files.length === 0 || busy}>
-                  Превью
-                </TabsTrigger>
-                <TabsTrigger value="code">Код{files.length > 0 && ` (${files.length})`}</TabsTrigger>
-                <TabsTrigger value="analysis">Структура</TabsTrigger>
-              </TabsList>
-              <TabsContent value="preview" className="mt-4">
-                {files.length > 0 && !busy && <PreviewFrame files={files} />}
-              </TabsContent>
-              <TabsContent value="code" className="mt-4">
-                <CodeViewer files={files} busy={busy} />
-              </TabsContent>
-              <TabsContent value="analysis" className="mt-4">
-                <AnalysisView analysis={analysis} />
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-        </Card>
+      <section aria-label="Результат" className="min-w-0 rounded-md border bg-card p-5">
+        <Tabs value={tab} onValueChange={setTab}>
+          <TabsList>
+            <TabsTrigger value="preview" disabled={files.length === 0 || busy}>
+              Превью
+            </TabsTrigger>
+            <TabsTrigger value="code">Код{files.length > 0 && ` (${files.length})`}</TabsTrigger>
+            <TabsTrigger value="analysis">Структура</TabsTrigger>
+          </TabsList>
+          <TabsContent value="preview" className="mt-4">
+            {files.length > 0 && !busy ? (
+              <PreviewFrame files={files} />
+            ) : (
+              <Empty>Здесь появится живое превью, когда код будет готов.</Empty>
+            )}
+          </TabsContent>
+          <TabsContent value="code" className="mt-4">
+            <CodeViewer files={files} busy={busy} />
+          </TabsContent>
+          <TabsContent value="analysis" className="mt-4">
+            <AnalysisView analysis={analysis} />
+          </TabsContent>
+        </Tabs>
       </section>
     </div>
   );

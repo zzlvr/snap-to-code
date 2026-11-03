@@ -1,4 +1,3 @@
-import { GoogleGenAI } from "@google/genai";
 import type { ImageData, LLMConfig } from "./types";
 
 export interface StreamOptions {
@@ -17,6 +16,8 @@ export async function* streamLLM(cfg: LLMConfig, opts: StreamOptions): AsyncGene
 
 async function* streamGemini(cfg: LLMConfig, o: StreamOptions) {
   if (!cfg.apiKey) throw new Error("Укажите Gemini API key в настройках");
+  // Loaded on demand: Ollama users never download the Google SDK.
+  const { GoogleGenAI } = await import("@google/genai");
   const ai = new GoogleGenAI({ apiKey: cfg.apiKey });
   const stream = await ai.models.generateContentStream({
     model: cfg.model,

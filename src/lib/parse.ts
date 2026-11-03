@@ -8,14 +8,28 @@ export function parseFiles(text: string): GeneratedFile[] {
   while ((m = re.exec(text))) {
     marks.push({ path: normalizePath(m[1]), start: m.index + m[0].length, end: m.index });
   }
-  return marks.map((mk, i) => {
-    const raw = text.slice(mk.start, i + 1 < marks.length ? marks[i + 1].end : undefined);
-    return { path: mk.path, code: stripFences(raw) };
-  });
+  return marks
+    .map((mk, i) => {
+      const raw = text.slice(mk.start, i + 1 < marks.length ? marks[i + 1].end : undefined);
+      return { path: mk.path, code: stripFences(raw) };
+    })
+    .filter((f) => f.path !== "");
 }
 
-function normalizePath(p: string) {
-  return p.trim().replace(/^[./]+/, "").replace(/^src\//, "");
+/**
+ * Paths come from model output, which can be steered by text inside the screenshot,
+ * so they are untrusted: they end up as ZIP entry names and as keys of the preview module map.
+ * Drop empty, "." and ".." segments (no zip-slip), backslashes and any odd characters.
+ */
+export function normalizePath(p: string) {
+  const segments = p
+    .trim()
+    .replace(/\\/g, "/")
+    .split("/")
+    .map((s) => s.replace(/[^\w.@()[\]-]/g, ""))
+    .filter((s) => s !== "" && s !== "." && s !== ".." && !/^\.+$/.test(s));
+  if (segments[0] === "src") segments.shift();
+  return segments.join("/");
 }
 
 function stripFences(code: string) {

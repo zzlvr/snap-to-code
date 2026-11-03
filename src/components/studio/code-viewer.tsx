@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { Check, Copy, Download, FileCode2, Terminal } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Check, Copy, Download, FileCode2, ShieldAlert, Terminal } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { downloadBlob, filesToText, filesToZip, shadcnCommand } from "@/lib/export";
+import { scanGeneratedCode } from "@/lib/scan";
 import type { GeneratedFile } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -14,6 +15,8 @@ export function CodeViewer({ files, busy }: { files: GeneratedFile[]; busy: bool
 
   const current = files.find((f) => f.path === selected) ?? files[files.length - 1] ?? files[0];
   const cmd = shadcnCommand(files);
+  // Scan only finished output: partial code mid-stream would give flickering false alarms.
+  const warnings = useMemo(() => (busy ? [] : scanGeneratedCode(files)), [files, busy]);
 
   async function copy(text: string, id: string, msg: string) {
     try {
@@ -27,11 +30,26 @@ export function CodeViewer({ files, busy }: { files: GeneratedFile[]; busy: bool
   }
 
   if (files.length === 0) {
-    return <p className="py-10 text-center text-sm text-muted-foreground">Код появится здесь после генерации.</p>;
+    return <p className="py-16 text-center text-sm text-muted-foreground">Файлы появятся здесь, как только модель начнёт их писать.</p>;
   }
 
   return (
     <div className="space-y-3">
+      {warnings.length > 0 && (
+        <div role="alert" className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm">
+          <p className="flex items-center gap-2 font-medium text-destructive">
+            <ShieldAlert className="h-4 w-4" aria-hidden="true" />
+            В коде есть подозрительные конструкции. Проверьте его, прежде чем копировать в проект.
+          </p>
+          <ul className="mt-2 space-y-0.5 text-xs text-muted-foreground">
+            {warnings.map((w, i) => (
+              <li key={i}>
+                <span className="font-mono text-foreground">{w.path}</span>: {w.message}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       <div className="flex flex-wrap items-center gap-2">
         <Button size="sm" disabled={busy} onClick={() => copy(filesToText(files), "all", "Все файлы скопированы")}>
           {copied === "all" ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
@@ -71,7 +89,7 @@ export function CodeViewer({ files, busy }: { files: GeneratedFile[]; busy: bool
           ))}
         </ul>
 
-        <div className="min-w-0 overflow-hidden rounded-lg border bg-zinc-950 text-zinc-100">
+        <div className="min-w-0 overflow-hidden rounded-md border bg-foreground text-background">
           <div className="flex items-center justify-between border-b border-zinc-800 px-3 py-1.5">
             <span className="font-mono text-xs text-zinc-400">{current?.path}</span>
             <button

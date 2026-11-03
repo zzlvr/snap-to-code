@@ -36,6 +36,31 @@ describe("parseFiles", () => {
     expect(parseFiles(text).map((f) => f.path)).toEqual(["components/Header.tsx", "app/page.tsx"]);
   });
 
+  it("blocks path traversal in model-supplied paths (zip-slip)", () => {
+    const text = [
+      "=== FILE: ../../etc/passwd ===",
+      "x",
+      "=== FILE: components/../../../evil.tsx ===",
+      "x",
+      "=== FILE: C:\\Windows\\win.tsx ===",
+      "x",
+      "=== FILE: .. ===",
+      "x",
+    ].join("\n");
+    const paths = parseFiles(text).map((f) => f.path);
+    for (const p of paths) {
+      expect(p.split("/")).not.toContain("..");
+      expect(p.startsWith("/")).toBe(false);
+      expect(p).not.toContain("\\");
+      expect(p).not.toContain(":");
+    }
+    expect(paths).toContain("etc/passwd");
+    expect(paths).toContain("components/evil.tsx");
+    // a path made only of traversal segments yields no file at all
+    expect(paths).not.toContain("");
+    expect(paths).toHaveLength(3);
+  });
+
   it("handles a partial stream: unfinished marker line is not a file yet", () => {
     expect(parseFiles("=== FILE: components/Hea")).toEqual([]);
   });

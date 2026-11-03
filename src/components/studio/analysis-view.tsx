@@ -3,7 +3,7 @@ import type { Analysis } from "@/lib/types";
 
 export function AnalysisView({ analysis }: { analysis: Analysis | null }) {
   if (!analysis) {
-    return <p className="py-10 text-center text-sm text-muted-foreground">Структура интерфейса появится после первого шага.</p>;
+    return <p className="py-16 text-center text-sm text-muted-foreground">Разбор структуры появится после первого шага.</p>;
   }
   return (
     <div className="space-y-5">

@@ -1,18 +1,33 @@
+import { Lock } from "lucide-react";
 import { Studio } from "@/components/studio/studio";
 
 export default function Home() {
   return (
     <main className="flex min-h-screen flex-col">
-      <header className="mx-auto w-full max-w-7xl px-4 py-10">
-        <div className="flex items-start justify-between gap-4">
-          <div className="space-y-3">
-            <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Snap to Code</h1>
-            <p className="max-w-2xl text-muted-foreground">
-              Вставьте скриншот интерфейса — получите чистый React-код на Tailwind и shadcn/ui, разбитый на компоненты.
-              Работает целиком в браузере: ваш ключ и картинки не попадают на наш сервер.
+      <header className="mx-auto flex w-full max-w-7xl flex-wrap items-end justify-between gap-x-8 gap-y-3 px-4 pb-6 pt-8">
+        <div className="flex items-center gap-3">
+          <svg width="36" height="36" viewBox="0 0 36 36" fill="none" aria-hidden="true">
+            <path
+              d="M3 11V3h8M25 3h8v8M33 25v8h-8M11 33H3v-8"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="square"
+            />
+            <rect x="14" y="14" width="8" height="8" fill="var(--lime)" />
+          </svg>
+          <div>
+            <h1 translate="no" className="font-heading text-3xl font-bold leading-none tracking-tight">
+              Snap to Code
+            </h1>
+            <p className="mt-1.5 text-sm text-muted-foreground">
+              Скриншот на входе — компоненты React на выходе.
             </p>
           </div>
         </div>
+        <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Lock className="h-3.5 w-3.5" aria-hidden="true" />
+          Ключ и картинки не покидают браузер: бэкенда нет.
+        </p>
       </header>
       <Studio />
     </main>

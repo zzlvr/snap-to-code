@@ -20,7 +20,6 @@ export const MODEL_PRESETS: Record<LLMConfig["provider"], string[]> = {
 /** Settings (including the BYOK API key) live only in this browser's localStorage. */
 export function useSettings() {
   const [settings, setSettings] = useState<LLMConfig>(DEFAULT_SETTINGS);
-  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     try {
@@ -30,7 +29,6 @@ export function useSettings() {
     } catch {
       /* storage unavailable: keep defaults */
     }
-    setLoaded(true);
   }, []);
 
   const update = useCallback((patch: Partial<LLMConfig>) => {
@@ -45,5 +43,5 @@ export function useSettings() {
     });
   }, []);
 
-  return { settings, update, loaded };
+  return { settings, update };
 }

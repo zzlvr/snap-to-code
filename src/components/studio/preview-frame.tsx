@@ -18,8 +18,8 @@ export function PreviewFrame({ files }: { files: GeneratedFile[] }) {
   const [error, setError] = useState<string | null>(null);
   const frameRef = useRef<HTMLIFrameElement>(null);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const html = useMemo(() => buildPreviewHtml(files), [files, nonce]);
+  // "Обновить" only remounts the iframe (new key), so the HTML itself depends on files alone.
+  const html = useMemo(() => buildPreviewHtml(files), [files]);
 
   useEffect(() => {
     function onMessage(e: MessageEvent) {
@@ -40,7 +40,8 @@ export function PreviewFrame({ files }: { files: GeneratedFile[] }) {
               key={w.label}
               type="button"
               onClick={() => setWidth(w.width)}
-              className={`rounded px-2.5 py-1 text-xs font-medium transition-colors ${
+              aria-pressed={width === w.width}
+              className={`rounded px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                 width === w.width ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
               }`}
             >
@@ -56,10 +57,10 @@ export function PreviewFrame({ files }: { files: GeneratedFile[] }) {
             setNonce((n) => n + 1);
           }}
         >
-          <RefreshCw className="h-3.5 w-3.5" /> Обновить
+          <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" /> Обновить
         </Button>
       </div>
-      <div className="flex-1 overflow-auto rounded-lg border bg-[repeating-conic-gradient(var(--muted)_0%_25%,transparent_0%_50%)] bg-[length:16px_16px]">
+      <div className="flex-1 overflow-auto rounded-md border bg-[repeating-conic-gradient(var(--muted)_0%_25%,transparent_0%_50%)] bg-[length:16px_16px] overscroll-contain">
         <iframe
           ref={frameRef}
           key={nonce}

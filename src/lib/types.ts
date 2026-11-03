@@ -12,6 +12,8 @@ export interface ImageData {
   base64: string;
   /** data: URL for displaying in the UI */
   dataUrl: string;
+  width: number;
+  height: number;
 }
 
 export interface AnalysisComponent {

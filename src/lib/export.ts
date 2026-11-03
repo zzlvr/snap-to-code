@@ -1,4 +1,3 @@
-import JSZip from "jszip";
 import type { GeneratedFile } from "./types";
 
 export function detectShadcn(files: GeneratedFile[]): string[] {
@@ -19,6 +18,8 @@ export function filesToText(files: GeneratedFile[]): string {
 }
 
 export async function filesToZip(files: GeneratedFile[]): Promise<Blob> {
+  // Loaded on demand: only users who export a ZIP pay for the library.
+  const { default: JSZip } = await import("jszip");
   const zip = new JSZip();
   for (const f of files) zip.file(f.path, f.code);
   const cmd = shadcnCommand(files);

@@ -11,10 +11,29 @@ import { cn } from "@/lib/utils";
 interface Props {
   image: ImageData | null;
   disabled?: boolean;
+  /** True while the model is analysing: sweeps a scan band over the screenshot. */
+  scanning?: boolean;
   onImage: (img: ImageData | null) => void;
 }
 
-export function Dropzone({ image, disabled, onImage }: Props) {
+/** Four crop marks, like a camera viewfinder. They tighten and turn lime when active. */
+function Brackets({ active }: { active?: boolean }) {
+  const base = cn(
+    "pointer-events-none absolute h-6 w-6 border-foreground/50 transition-[inset,border-color] duration-150",
+    active && "border-lime",
+  );
+  const inset = active ? "8px" : "0px";
+  return (
+    <>
+      <span aria-hidden="true" className={cn(base, "border-l-2 border-t-2")} style={{ left: inset, top: inset }} />
+      <span aria-hidden="true" className={cn(base, "border-r-2 border-t-2")} style={{ right: inset, top: inset }} />
+      <span aria-hidden="true" className={cn(base, "border-b-2 border-l-2")} style={{ left: inset, bottom: inset }} />
+      <span aria-hidden="true" className={cn(base, "border-b-2 border-r-2")} style={{ right: inset, bottom: inset }} />
+    </>
+  );
+}
+
+export function Dropzone({ image, disabled, scanning, onImage }: Props) {
   const [dragging, setDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -27,6 +46,12 @@ export function Dropzone({ image, disabled, onImage }: Props) {
     }
   }
 
+  // The paste listener is registered once; it always calls the latest `accept` through a ref.
+  const acceptRef = useRef(accept);
+  useEffect(() => {
+    acceptRef.current = accept;
+  });
+
   // Global Ctrl/Cmd+V: grab the first image from the clipboard.
   useEffect(() => {
     function onPaste(e: ClipboardEvent) {
@@ -35,27 +60,40 @@ export function Dropzone({ image, disabled, onImage }: Props) {
       const item = [...(e.clipboardData?.items ?? [])].find((i) => i.type.startsWith("image/"));
       if (!item) return;
       e.preventDefault();
-      accept(item.getAsFile());
+      acceptRef.current(item.getAsFile());
     }
     window.addEventListener("paste", onPaste);
     return () => window.removeEventListener("paste", onPaste);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [disabled]);
+  }, []);
 
   if (image) {
     return (
-      <div className="group relative overflow-hidden rounded-xl border bg-muted/30">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={image.dataUrl} alt="Загруженный скриншот" className="max-h-72 w-full object-contain" />
+      <div className="group relative bg-card p-3">
+        <div className="relative overflow-hidden">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={image.dataUrl}
+            width={image.width}
+            height={image.height}
+            alt="Загруженный скриншот интерфейса"
+            className="max-h-72 w-full object-contain"
+          />
+          {scanning && (
+            <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+              <div className="scan-band h-1/4 w-full" />
+            </div>
+          )}
+        </div>
+        <Brackets active={scanning} />
         {!disabled && (
           <Button
             size="icon"
             variant="secondary"
-            className="absolute right-2 top-2 h-8 w-8 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+            className="absolute right-4 top-4 h-8 w-8 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
             onClick={() => onImage(null)}
-            aria-label="Убрать изображение"
+            aria-label="Убрать скриншот"
           >
-            <X className="h-4 w-4" />
+            <X className="h-4 w-4" aria-hidden="true" />
           </Button>
         )}
       </div>
@@ -78,14 +116,15 @@ export function Dropzone({ image, disabled, onImage }: Props) {
         accept(e.dataTransfer.files[0]);
       }}
       className={cn(
-        "flex h-56 w-full flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed px-6 text-center transition-colors",
-        "hover:border-primary/50 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-        dragging && "border-primary bg-muted/60",
+        "relative flex h-56 w-full flex-col items-center justify-center gap-3 bg-card px-6 text-center transition-colors",
+        "hover:bg-secondary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+        dragging && "bg-lime/25",
       )}
     >
       <input
         ref={inputRef}
         type="file"
+        name="screenshot"
         accept="image/*"
         className="hidden"
         onChange={(e) => {
@@ -93,12 +132,14 @@ export function Dropzone({ image, disabled, onImage }: Props) {
           e.target.value = "";
         }}
       />
-      <ImageUp className="h-8 w-8 text-muted-foreground" />
-      <div className="space-y-1">
-        <p className="text-sm font-medium">Перетащите скриншот или нажмите, чтобы выбрать</p>
+      <Brackets active={dragging} />
+      <ImageUp className="h-7 w-7 text-muted-foreground" aria-hidden="true" />
+      <div className="space-y-1.5">
+        <p className="text-sm font-medium">Перетащите скриншот или выберите файл</p>
         <p className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
-          <ClipboardPaste className="h-3.5 w-3.5" />
-          или вставьте из буфера: <kbd className="rounded border bg-muted px-1.5 py-0.5 font-mono text-[10px]">Ctrl/⌘ + V</kbd>
+          <ClipboardPaste className="h-3.5 w-3.5" aria-hidden="true" />
+          Можно вставить из буфера:&nbsp;
+          <kbd className="rounded border bg-background px-1.5 py-0.5 font-mono text-[10px]">Ctrl/⌘&nbsp;+&nbsp;V</kbd>
         </p>
       </div>
     </button>

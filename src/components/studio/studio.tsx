@@ -50,6 +50,7 @@ export function Studio() {
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [files, setFiles] = useState<GeneratedFile[]>([]);
   const [tab, setTab] = useState("compare");
+  const [notice, setNotice] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   const busy = stage === "analyzing" || stage === "generating";
@@ -144,6 +145,7 @@ export function Studio() {
     abortRef.current = ctrl;
     setAnalysis(null);
     setFiles([]);
+    setNotice(null);
     setTab("compare");
     try {
       const result = await runPipeline(
@@ -151,11 +153,19 @@ export function Studio() {
         image,
         {
           onStage: (s) => {
+            setNotice(null);
             setStage(s);
             if (s === "generating") setTab("code");
           },
-          onAnalysis: setAnalysis,
-          onFiles: setFiles,
+          onAnalysis: (a) => {
+            setNotice(null);
+            setAnalysis(a);
+          },
+          onFiles: (f) => {
+            setNotice(null);
+            setFiles(f);
+          },
+          onRetry: (attempt, attempts) => setNotice(`The model is busy. Trying again (try ${attempt} of ${attempts})…`),
         },
         ctrl.signal,
       );
@@ -171,15 +181,16 @@ export function Studio() {
         const next = await recoverModel(cfg);
         if (next) return generate(next, true);
       }
+      setNotice(null);
       setStage("error");
       const message = e instanceof Error ? e.message : "Something went wrong. Try again.";
       // Out of quota: offer the lighter model in one tap, since its limits are usually more generous.
       const lighter =
-        e instanceof ApiError && e.status === 429
+        e instanceof ApiError && (e.status === 429 || e.status >= 500)
           ? lighterModel(providerId, liveModels.length > 0 ? liveModels : getPreset(providerId).models, cfg.model)
           : null;
       toast.error(message, {
-        duration: e instanceof ApiError && e.status === 429 ? 15000 : undefined,
+        duration: e instanceof ApiError && (e.status === 429 || e.status >= 500) ? 15000 : undefined,
         action: lighter
           ? {
               label: `Use ${lighter}`,
@@ -236,7 +247,7 @@ export function Studio() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="flex min-h-5 items-center gap-2 text-sm text-muted-foreground" role="status" aria-live="polite">
               {busy && <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />}
-              {STAGE_LABEL[stage]}
+              {busy && notice ? notice : STAGE_LABEL[stage]}
               {stage === "idle" &&
                 !configProblem &&
                 `Ready. ${sourceCount > 1 ? `${sourceCount} screenshots stacked top to bottom. ` : ""}${

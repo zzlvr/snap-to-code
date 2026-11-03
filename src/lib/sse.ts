@@ -40,6 +40,9 @@ export function anthropicDelta(json: unknown): string {
 /** Ends a sentence the provider left open, so a hint can follow it. */
 const endSentence = (text: string) => (/[.!?]$/.test(text) ? text : `${text}.`);
 
+/** Shown after the automatic retries for a 5xx have also failed. */
+const OVERLOADED_HINT = " The provider is overloaded or having trouble, which is usually temporary. Try again in a minute or switch to another model.";
+
 /** An HTTP error from a model API. `status` lets callers react: a retired model (404), a rate limit (429). */
 export class ApiError extends Error {
   constructor(
@@ -98,7 +101,9 @@ export function errorMessageFrom(status: number, bodyText: string, retryAfterHea
         ? " Check the model name and base URL."
         : status === 429
           ? rateLimitHint(bodyText, retrySeconds(retryAfterHeader, bodyText))
-          : "";
+          : status >= 500
+            ? OVERLOADED_HINT
+            : "";
   return `The model API returned ${status}: ${hint ? endSentence(detail) : detail}${hint}`.trim();
 }
 
@@ -134,7 +139,9 @@ export function parseGeminiError(err: unknown): ApiError | Error {
         ? " Pick another model in the model settings."
         : code === 429
           ? rateLimitHint(raw, retryAfter)
-          : "";
+          : code >= 500
+            ? OVERLOADED_HINT
+            : "";
   return code ? new ApiError(`Gemini returned ${code}: ${hint ? endSentence(message) : message}${hint}`, code, retryAfter) : new Error(message);
 }
 

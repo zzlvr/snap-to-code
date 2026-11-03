@@ -181,3 +181,34 @@ describe("rate limits", () => {
     expect(rateLimitHint("PerDay", 3)).toMatch(/daily/);
   });
 });
+
+describe("overloaded provider", () => {
+  it("recognises the Gemini 503 high-demand error and says it is temporary", () => {
+    const err = new Error(
+      JSON.stringify({
+        error: {
+          message: JSON.stringify({
+            error: {
+              code: 503,
+              message: "This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.",
+              status: "UNAVAILABLE",
+            },
+          }),
+          code: 503,
+          status: "",
+        },
+      }),
+    );
+    const e = parseGeminiError(err) as ApiError;
+    expect(e).toBeInstanceOf(ApiError);
+    expect(e.status).toBe(503);
+    expect(e.message).toMatch(/high demand/);
+    expect(e.message).toMatch(/usually temporary/);
+    expect(e.message).toMatch(/switch to another model/);
+  });
+
+  it("adds the same hint for 5xx errors from other providers", () => {
+    expect(errorMessageFrom(502, "bad gateway")).toMatch(/overloaded or having trouble/);
+    expect(errorMessageFrom(400, "bad")).not.toMatch(/overloaded/);
+  });
+});

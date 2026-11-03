@@ -188,3 +188,63 @@ describe("unreachable server", () => {
     await expect(run(cfg)).rejects.toThrow(/Could not reach http:\/\/127\.0\.0\.1:1.*CORS/);
   });
 });
+
+describe("automatic retry of temporary server failures", () => {
+  const cfg = (): LLMConfig => ({ protocol: "openai", apiKey: "k", model: "m", baseUrl: `${base}/v1` });
+  const collect = async (opts: { onRetry?: (a: number, n: number) => void; signal?: AbortSignal; retryDelays?: number[] }) => {
+    let out = "";
+    for await (const c of streamLLM(cfg(), { system: "S", prompt: "P", images: [image], retryDelays: [0, 0], ...opts })) out += c;
+    return out;
+  };
+  const busy = (res: import("node:http").ServerResponse) => {
+    res.writeHead(503, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: { message: "This model is currently experiencing high demand." } }));
+  };
+  const ok = (res: import("node:http").ServerResponse) => {
+    res.writeHead(200, { "Content-Type": "text/event-stream" });
+    res.write('data: {"choices":[{"delta":{"content":"Hi"}}]}\n\n');
+    res.end("data: [DONE]\n\n");
+  };
+
+  it("tries again after a 503 and returns the answer without the user noticing", async () => {
+    let hits = 0;
+    respond = (res) => (++hits === 1 ? busy(res) : ok(res));
+    const retries: [number, number][] = [];
+    expect(await collect({ onRetry: (a, n) => retries.push([a, n]) })).toBe("Hi");
+    expect(hits).toBe(2);
+    expect(retries).toEqual([[2, 3]]);
+  });
+
+  it("gives up after three tries and reports the provider as overloaded", async () => {
+    let hits = 0;
+    respond = (res) => {
+      hits++;
+      busy(res);
+    };
+    const err = await collect({}).catch((e) => e);
+    expect(err).toBeInstanceOf(ApiError);
+    expect(err.status).toBe(503);
+    expect(err.message).toMatch(/overloaded/);
+    expect(hits).toBe(3);
+  });
+
+  it("does not retry errors that retrying cannot fix", async () => {
+    let hits = 0;
+    respond = (res) => {
+      hits++;
+      res.writeHead(400, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: { message: "bad request" } }));
+    };
+    await expect(collect({})).rejects.toThrow(/bad request/);
+    expect(hits).toBe(1);
+  });
+
+  it("stops waiting at once when the user presses Stop", async () => {
+    respond = busy;
+    const ctrl = new AbortController();
+    setTimeout(() => ctrl.abort(), 60);
+    const started = Date.now();
+    await expect(collect({ signal: ctrl.signal, retryDelays: [30] })).rejects.toMatchObject({ name: "AbortError" });
+    expect(Date.now() - started).toBeLessThan(2000);
+  });
+});

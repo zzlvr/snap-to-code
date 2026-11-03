@@ -7,6 +7,8 @@ interface Callbacks {
   onStage: (s: "analyzing" | "generating") => void;
   onAnalysis: (a: Analysis) => void;
   onFiles: (f: GeneratedFile[]) => void;
+  /** The model was busy; the same request is being tried again. */
+  onRetry?: (attempt: number, attempts: number) => void;
 }
 
 /** Two-step generation: 1) analyse UI structure, 2) generate component files. */
@@ -24,6 +26,7 @@ export async function runPipeline(
     images: image.parts,
     json: true,
     signal,
+    onRetry: cb.onRetry,
   })) {
     text += chunk;
   }
@@ -38,6 +41,7 @@ export async function runPipeline(
     prompt: generationPrompt(analysis, image.parts.length),
     images: image.parts,
     signal,
+    onRetry: cb.onRetry,
   })) {
     text += chunk;
     const now = Date.now();

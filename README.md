@@ -2,6 +2,10 @@
 
 Turn a screenshot of a UI into clean **React + Tailwind CSS + shadcn/ui** code, split into components (`Sidebar.tsx`, `Header.tsx`, `DataTable.tsx`, …). Bring your own vision model and API key.
 
+![Paste a screenshot, generate components, drag the divider to compare](docs/demo.gif)
+
+<sub>The demo was recorded against a local mock model that returns a fixed dashboard, so it shows the interface, not the quality of any real model.</sub>
+
 ## Features
 
 - **Fast input**: paste with `Ctrl/⌘ + V`, drag and drop, or pick a file.

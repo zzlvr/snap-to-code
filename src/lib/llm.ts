@@ -1,4 +1,4 @@
-import { anthropicDelta, errorMessageFrom, openaiDelta, readSSE } from "./sse";
+import { anthropicDelta, errorMessageFrom, geminiErrorMessage, openaiDelta, readSSE } from "./sse";
 import type { ImagePart, LLMConfig } from "./types";
 
 export interface StreamOptions {
@@ -45,6 +45,15 @@ async function* streamGemini(cfg: LLMConfig, o: StreamOptions) {
   // Loaded on demand: users of other providers never download the Google SDK.
   const { GoogleGenAI } = await import("@google/genai");
   const ai = new GoogleGenAI({ apiKey: cfg.apiKey });
+  try {
+    yield* geminiChunks(ai, cfg, o);
+  } catch (e) {
+    if (o.signal?.aborted || (e instanceof DOMException && e.name === "AbortError")) throw e;
+    throw new Error(geminiErrorMessage(e));
+  }
+}
+
+async function* geminiChunks(ai: import("@google/genai").GoogleGenAI, cfg: LLMConfig, o: StreamOptions) {
   const stream = await ai.models.generateContentStream({
     model: cfg.model,
     contents: [

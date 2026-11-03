@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { anthropicDelta, errorMessageFrom, openaiDelta, readSSE } from "./sse";
+import { anthropicDelta, errorMessageFrom, geminiErrorMessage, openaiDelta, readSSE } from "./sse";
 
 function streamOf(...chunks: string[]) {
   const enc = new TextEncoder();
@@ -74,5 +74,42 @@ describe("errorMessageFrom", () => {
   });
   it("falls back to raw text for non-JSON bodies", () => {
     expect(errorMessageFrom(500, "boom")).toContain("boom");
+  });
+});
+
+describe("geminiErrorMessage", () => {
+  // The exact payload a real user got: JSON inside a JSON string.
+  const nested = new Error(
+    JSON.stringify({
+      error: {
+        message:
+          '{\n "error": {\n "code": 404,\n "message": "This model models/gemini-2.5-flash is no longer available to new users.",\n "status": "NOT_FOUND"\n }\n}\n',
+        code: 404,
+        status: "",
+      },
+    }),
+  );
+
+  it("unwraps nested JSON into one readable sentence with a hint", () => {
+    const msg = geminiErrorMessage(nested);
+    expect(msg).toBe(
+      "Gemini returned 404: This model models/gemini-2.5-flash is no longer available to new users. Pick another model in the model settings.",
+    );
+    expect(msg).not.toContain("{");
+    expect(msg).not.toContain("\\");
+  });
+
+  it("hints at the key and at quota limits", () => {
+    expect(geminiErrorMessage(new Error(JSON.stringify({ error: { code: 403, message: "API key not valid" } })))).toMatch(/Check the API key/);
+    expect(geminiErrorMessage(new Error(JSON.stringify({ error: { code: 429, message: "Quota exceeded" } })))).toMatch(/free-tier quota/);
+  });
+
+  it("uses the status property of the SDK error when the message has no code", () => {
+    const e = Object.assign(new Error("plain text failure"), { status: 429 });
+    expect(geminiErrorMessage(e)).toMatch(/^Gemini returned 429: plain text failure/);
+  });
+
+  it("passes through a plain message that has no code", () => {
+    expect(geminiErrorMessage(new Error("something odd"))).toBe("something odd");
   });
 });

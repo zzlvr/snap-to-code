@@ -7,6 +7,7 @@ import {
   defaultProfile,
   detectProviderFromKey,
   getPreset,
+  migrateProfile,
   toConfig,
   type ProviderProfile,
 } from "@/lib/providers";
@@ -36,8 +37,14 @@ export function useSettings() {
     try {
       localStorage.removeItem(LEGACY_KEY);
       const raw = localStorage.getItem(KEY);
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrating from localStorage after mount
-      if (raw) setStored({ ...INITIAL, ...JSON.parse(raw) });
+      if (raw) {
+        const parsed: Stored = { ...INITIAL, ...JSON.parse(raw) };
+        parsed.profiles = Object.fromEntries(
+          Object.entries(parsed.profiles ?? {}).map(([id, prof]) => [id, migrateProfile(id, prof)]),
+        );
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrating from localStorage after mount
+        setStored(parsed);
+      }
     } catch {
       /* storage unavailable: keep defaults */
     }

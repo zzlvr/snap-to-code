@@ -27,7 +27,7 @@ export const PROVIDERS: ProviderPreset[] = [
     defaultBaseUrl: "",
     editableBaseUrl: false,
     needsKey: true,
-    models: ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.5-flash-lite"],
+    models: ["gemini-3.8-flash", "gemini-3.5-flash-lite"],
     keyUrl: "https://aistudio.google.com/apikey",
   },
   {
@@ -81,6 +81,20 @@ export const PROVIDERS: ProviderPreset[] = [
     hint: "Any server that speaks the OpenAI chat-completions API: LM Studio, vLLM, llama.cpp, Groq, Together, Mistral, DeepSeek, xAI, LiteLLM, Azure. The model must accept images.",
   },
 ];
+
+/**
+ * Models this app used to pick silently as a default and that the provider has since retired for new keys.
+ * A saved profile still holding one of them is moved to the current default. Models the user typed
+ * themselves are never touched.
+ */
+const RETIRED_DEFAULTS: Record<string, string> = { gemini: "gemini-2.5-flash" };
+
+export function migrateProfile(providerId: string, profile: ProviderProfile): ProviderProfile {
+  if (RETIRED_DEFAULTS[providerId] && profile.model === RETIRED_DEFAULTS[providerId]) {
+    return { ...profile, model: getPreset(providerId).models[0] ?? profile.model };
+  }
+  return profile;
+}
 
 export const DEFAULT_PROVIDER_ID = "gemini";
 

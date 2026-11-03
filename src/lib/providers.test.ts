@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { defaultProfile, detectProviderFromKey, getPreset, PROVIDERS, toConfig, validateConfig } from "./providers";
+import { defaultProfile, detectProviderFromKey, getPreset, migrateProfile, PROVIDERS, toConfig, validateConfig } from "./providers";
 
 describe("detectProviderFromKey", () => {
   it.each([
@@ -85,5 +85,24 @@ describe("validateConfig", () => {
   it("accepts a configured Gemini key", () => {
     const cfg = toConfig("gemini", { ...defaultProfile("gemini"), apiKey: "AIza-test" });
     expect(validateConfig("gemini", cfg)).toBeNull();
+  });
+});
+
+describe("migrateProfile", () => {
+  it("moves a saved retired default model to the current default", () => {
+    const old = { apiKey: "AIzaX", model: "gemini-2.5-flash", baseUrl: "" };
+    expect(migrateProfile("gemini", old)).toEqual({ ...old, model: getPreset("gemini").models[0] });
+  });
+
+  it("never touches a model the user chose themselves", () => {
+    const own = { apiKey: "AIzaX", model: "gemini-2.5-pro", baseUrl: "" };
+    expect(migrateProfile("gemini", own)).toBe(own);
+    const other = { apiKey: "k", model: "gemini-2.5-flash", baseUrl: "https://x/v1" };
+    expect(migrateProfile("custom", other)).toBe(other);
+  });
+
+  it("the Gemini default is a current model, not a retired one", () => {
+    expect(getPreset("gemini").models[0]).toBe("gemini-3.8-flash");
+    expect(getPreset("gemini").models).not.toContain("gemini-2.5-flash");
   });
 });

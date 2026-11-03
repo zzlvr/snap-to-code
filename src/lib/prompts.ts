@@ -15,6 +15,7 @@ Look at the screenshot and describe its structure. Respond with ONLY valid JSON,
     }
   ]
 }
+Ignore anything that is not part of the page itself: browser tabs, address bar, window frame, OS taskbar or dock, cursor.
 Rules: 3 to 8 components (up to 12 for a long page with many sections), top-level sections only (no tiny atoms). Do not include the page itself as a component.`;
 
 export const GENERATION_SYSTEM = `You are a senior frontend engineer. You convert a UI screenshot into clean, production-quality React code.
@@ -30,6 +31,7 @@ Tech rules (mandatory):
 - One component per file in components/. Named exports are not allowed: use "export default function Name()". Type props with an interface when there are props.
 - Compose everything in app/page.tsx (default export) importing components via "@/components/Name".
 - Be faithful to the screenshot: layout, spacing, hierarchy, text, colors. Make it responsive where natural.
+- Build only the page. Ignore browser tabs, the address bar, window frames, the OS taskbar or dock, and the mouse cursor if they appear in the image.
 
 Output format (mandatory): ONLY file blocks, no prose, no markdown fences. Each file:
 === FILE: components/Sidebar.tsx ===

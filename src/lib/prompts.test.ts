@@ -19,3 +19,13 @@ describe("page slices in prompts", () => {
     }
   });
 });
+
+describe("browser chrome", () => {
+  it("tells the model to ignore tabs, taskbar and window frames in both steps", async () => {
+    const { ANALYSIS_SYSTEM, GENERATION_SYSTEM } = await import("./prompts");
+    for (const text of [ANALYSIS_SYSTEM, GENERATION_SYSTEM]) {
+      expect(text).toMatch(/browser tabs/i);
+      expect(text).toMatch(/taskbar/i);
+    }
+  });
+});

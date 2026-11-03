@@ -139,3 +139,20 @@ describe("fetchModelIds", () => {
     expect(await fetchModelIds("custom", cfg("openai", `${base}/v1`))).toEqual([]);
   });
 });
+
+describe("lighterModel", () => {
+  it("offers the newest lite model, never the current one", async () => {
+    const { lighterModel } = await import("./models");
+    const ids = ["gemini-3.8-flash", "gemini-3.5-flash-lite", "gemini-2.5-flash-lite", "gemini-3.5-flash-lite-preview-tts"];
+    expect(lighterModel("gemini", ids, "gemini-3.8-flash")).toBe("gemini-3.5-flash-lite");
+    expect(lighterModel("gemini", ids, "gemini-3.5-flash-lite")).toBe("gemini-2.5-flash-lite");
+    expect(lighterModel("openai", ["gpt-4.1", "gpt-4.1-mini", "gpt-5-mini"], "gpt-5")).toBe("gpt-5-mini");
+    expect(lighterModel("anthropic", ["claude-sonnet-5-5", "claude-haiku-5-5"], "claude-sonnet-5-5")).toBe("claude-haiku-5-5");
+  });
+
+  it("has nothing to offer when there is no lighter model or no rule", async () => {
+    const { lighterModel } = await import("./models");
+    expect(lighterModel("gemini", ["gemini-3.8-flash"], "gemini-3.8-flash")).toBeNull();
+    expect(lighterModel("openrouter", ["a/b"], "a/c")).toBeNull();
+  });
+});

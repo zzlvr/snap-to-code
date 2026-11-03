@@ -1,4 +1,4 @@
-import { anthropicDelta, ApiError, errorMessageFrom, openaiDelta, parseGeminiError, readSSE } from "./sse";
+import { anthropicDelta, ApiError, errorMessageFrom, openaiDelta, parseGeminiError, readSSE, retrySeconds } from "./sse";
 import type { ImagePart, LLMConfig } from "./types";
 
 export interface StreamOptions {
@@ -36,7 +36,9 @@ async function post(url: string, init: RequestInit, signal?: AbortSignal): Promi
     );
   }
   if (!res.ok || !res.body) {
-    throw new ApiError(errorMessageFrom(res.status, await res.text().catch(() => "")), res.status);
+    const retryHeader = res.headers.get("retry-after");
+    const body = await res.text().catch(() => "");
+    throw new ApiError(errorMessageFrom(res.status, body, retryHeader), res.status, retrySeconds(retryHeader, body));
   }
   return res;
 }

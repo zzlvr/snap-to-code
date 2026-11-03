@@ -2,6 +2,7 @@ import { createServer, type IncomingMessage, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { streamLLM } from "./llm";
+import { ApiError } from "./sse";
 import type { ImagePart, LLMConfig } from "./types";
 
 const image: ImagePart = { mimeType: "image/jpeg", base64: "QUJD" };
@@ -75,6 +76,18 @@ describe("OpenAI-compatible protocol", () => {
       { type: "image_url", image_url: { url: "data:image/jpeg;base64,QUJD" } },
       { type: "image_url", image_url: { url: "data:image/jpeg;base64,REVG" } },
     ]);
+  });
+
+  it("turns a 429 with Retry-After into a typed error that says how long to wait", async () => {
+    respond = (res) => {
+      res.writeHead(429, { "Content-Type": "application/json", "Retry-After": "9" });
+      res.end(JSON.stringify({ error: { message: "Rate limit reached" } }));
+    };
+    const err = await run(cfg()).catch((e) => e);
+    expect(err).toBeInstanceOf(ApiError);
+    expect(err.status).toBe(429);
+    expect(err.retryAfter).toBe(9);
+    expect(err.message).toMatch(/Try again in about 9 s/);
   });
 
   it("omits the Authorization header when no key is set (local servers)", async () => {

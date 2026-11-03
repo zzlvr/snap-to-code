@@ -37,19 +37,52 @@ export function anthropicDelta(json: unknown): string {
   return "";
 }
 
-/** Extracts the most useful message from an error response body. */
-/** An HTTP error from a model API. `status` lets callers react, for example to a retired model (404). */
+/** Ends a sentence the provider left open, so a hint can follow it. */
+const endSentence = (text: string) => (/[.!?]$/.test(text) ? text : `${text}.`);
+
+/** An HTTP error from a model API. `status` lets callers react: a retired model (404), a rate limit (429). */
 export class ApiError extends Error {
   constructor(
     message: string,
     readonly status: number,
+    /** Seconds the provider asked us to wait, when it said so. */
+    readonly retryAfter?: number,
   ) {
     super(message);
     this.name = "ApiError";
   }
 }
 
-export function errorMessageFrom(status: number, bodyText: string): string {
+/** Seconds to wait, from a Retry-After header or from the provider's own wording ("retry in 34.5s", retryDelay "34s"). */
+export function retrySeconds(...sources: (string | null | undefined)[]): number | undefined {
+  for (const text of sources) {
+    if (!text) continue;
+    // "retry in 34.5s" is more exact than the whole-second retryDelay "34s", so it is tried first.
+    const m =
+      text.match(/retry in (\d+(?:\.\d+)?)\s?s/i) ??
+      text.match(/retryDelay\W{1,8}(\d+(?:\.\d+)?)s/i) ??
+      text.match(/^\s*(\d+(?:\.\d+)?)\s*$/);
+    if (m) {
+      const n = Number(m[1]);
+      if (Number.isFinite(n) && n > 0) return n;
+    }
+  }
+  return undefined;
+}
+
+/** What to tell the user after a 429. A daily limit cannot be waited out in seconds, so it is told apart. */
+export function rateLimitHint(raw: string, retryAfter?: number): string {
+  const daily = /PerDay/i.test(raw);
+  const when = daily
+    ? " The daily limit looks used up; free-tier limits reset around midnight Pacific time."
+    : retryAfter
+      ? ` Try again in about ${Math.ceil(retryAfter)} s.`
+      : " Wait a moment.";
+  return ` Rate limit or quota reached.${when} Or switch to a lighter model.`;
+}
+
+/** Extracts the most useful message from an error response body. */
+export function errorMessageFrom(status: number, bodyText: string, retryAfterHeader?: string | null): string {
   let detail = bodyText.slice(0, 300);
   try {
     const j = JSON.parse(bodyText);
@@ -64,9 +97,9 @@ export function errorMessageFrom(status: number, bodyText: string): string {
       : status === 404
         ? " Check the model name and base URL."
         : status === 429
-          ? " Rate limit reached: wait a moment or use another model."
+          ? rateLimitHint(bodyText, retrySeconds(retryAfterHeader, bodyText))
           : "";
-  return `The model API returned ${status}: ${detail}${hint}`.trim();
+  return `The model API returned ${status}: ${hint ? endSentence(detail) : detail}${hint}`.trim();
 }
 
 /**
@@ -74,7 +107,8 @@ export function errorMessageFrom(status: number, bodyText: string): string {
  * Unwraps it down to one readable sentence plus a hint for the usual causes.
  */
 export function parseGeminiError(err: unknown): ApiError | Error {
-  let message = err instanceof Error ? err.message : String(err);
+  const raw = err instanceof Error ? err.message : String(err);
+  let message = raw;
   const statusProp = (err as { status?: unknown } | null)?.status;
   let code = typeof statusProp === "number" ? statusProp : 0;
   for (let depth = 0; depth < 3; depth++) {
@@ -92,15 +126,16 @@ export function parseGeminiError(err: unknown): ApiError | Error {
     break;
   }
   message = message.replace(/\s+/g, " ").slice(0, 400);
+  const retryAfter = code === 429 ? retrySeconds(raw) : undefined;
   const hint =
     code === 401 || code === 403
       ? " Check the API key."
       : code === 404
         ? " Pick another model in the model settings."
         : code === 429
-          ? " Rate limit or free-tier quota reached: wait a while, or choose another model."
+          ? rateLimitHint(raw, retryAfter)
           : "";
-  return code ? new ApiError(`Gemini returned ${code}: ${message}${hint}`, code) : new Error(message);
+  return code ? new ApiError(`Gemini returned ${code}: ${hint ? endSentence(message) : message}${hint}`, code, retryAfter) : new Error(message);
 }
 
 export const geminiErrorMessage = (err: unknown): string => parseGeminiError(err).message;

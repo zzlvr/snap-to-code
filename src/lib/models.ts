@@ -55,6 +55,24 @@ export function bestModel(providerId: string, ids: string[], exclude?: string): 
   return usable.sort((a, b) => compareVersions(b, a))[0] ?? null;
 }
 
+/** Per provider: the lighter, cheaper family. Its limits are usually more generous. */
+const LIGHT_FAMILY: Record<string, RegExp> = {
+  gemini: /^gemini-[\d.]+-flash-lite$/,
+  openai: /^gpt-[\d.]+o?-mini$/,
+  anthropic: /haiku/,
+};
+
+/** The newest lighter model, other than the current one. Null when the provider has none or no rule. */
+export function lighterModel(providerId: string, ids: string[], current: string): string | null {
+  const family = LIGHT_FAMILY[providerId];
+  if (!family) return null;
+  return (
+    ids
+      .filter((id) => id !== current && !NOT_A_VISION_CHAT_MODEL.test(id) && family.test(id))
+      .sort((a, b) => compareVersions(b, a))[0] ?? null
+  );
+}
+
 interface GeminiList {
   models?: { name?: string; supportedGenerationMethods?: string[] }[];
 }

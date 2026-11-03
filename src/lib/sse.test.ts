@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { anthropicDelta, errorMessageFrom, geminiErrorMessage, openaiDelta, readSSE } from "./sse";
+import { anthropicDelta, ApiError, errorMessageFrom, geminiErrorMessage, openaiDelta, parseGeminiError, rateLimitHint, readSSE, retrySeconds } from "./sse";
 
 function streamOf(...chunks: string[]) {
   const enc = new TextEncoder();
@@ -101,7 +101,7 @@ describe("geminiErrorMessage", () => {
 
   it("hints at the key and at quota limits", () => {
     expect(geminiErrorMessage(new Error(JSON.stringify({ error: { code: 403, message: "API key not valid" } })))).toMatch(/Check the API key/);
-    expect(geminiErrorMessage(new Error(JSON.stringify({ error: { code: 429, message: "Quota exceeded" } })))).toMatch(/free-tier quota/);
+    expect(geminiErrorMessage(new Error(JSON.stringify({ error: { code: 429, message: "Quota exceeded" } })))).toMatch(/Rate limit or quota reached/);
   });
 
   it("uses the status property of the SDK error when the message has no code", () => {
@@ -111,5 +111,73 @@ describe("geminiErrorMessage", () => {
 
   it("passes through a plain message that has no code", () => {
     expect(geminiErrorMessage(new Error("something odd"))).toBe("something odd");
+  });
+});
+
+describe("rate limits", () => {
+  // Shaped like a real Gemini 429: JSON inside JSON, quota id and a RetryInfo detail.
+  const perMinute = new Error(
+    JSON.stringify({
+      error: {
+        message: JSON.stringify({
+          error: {
+            code: 429,
+            message: "You exceeded your current quota. Please retry in 34.5s.",
+            status: "RESOURCE_EXHAUSTED",
+            details: [
+              { "@type": "type.googleapis.com/google.rpc.QuotaFailure", violations: [{ quotaId: "GenerateRequestsPerMinutePerProjectPerModel-FreeTier" }] },
+              { "@type": "type.googleapis.com/google.rpc.RetryInfo", retryDelay: "34s" },
+            ],
+          },
+        }),
+        code: 429,
+        status: "",
+      },
+    }),
+  );
+  const perDay = new Error(
+    JSON.stringify({
+      error: {
+        message: JSON.stringify({ error: { code: 429, message: "Quota exceeded for GenerateRequestsPerDayPerProjectPerModel-FreeTier" } }),
+        code: 429,
+      },
+    }),
+  );
+
+  it("reads the wait time the provider asks for", () => {
+    expect(retrySeconds("retry in 34.5s")).toBe(34.5);
+    expect(retrySeconds('"retryDelay": "34s"')).toBe(34);
+    expect(retrySeconds('{\\"retryDelay\\": \\"12s\\"}')).toBe(12);
+    expect(retrySeconds("7")).toBe(7);
+    expect(retrySeconds(null, undefined, "nothing here")).toBeUndefined();
+  });
+
+  it("tells the user how long to wait after a per-minute limit", () => {
+    const e = parseGeminiError(perMinute) as ApiError;
+    expect(e).toBeInstanceOf(ApiError);
+    expect(e.status).toBe(429);
+    expect(e.retryAfter).toBe(34.5);
+    expect(e.message).toMatch(/Try again in about 35 s/);
+    expect(e.message).toMatch(/lighter model/);
+  });
+
+  it("says a daily limit will not clear in seconds", () => {
+    const e = parseGeminiError(perDay) as ApiError;
+    expect(e.status).toBe(429);
+    expect(e.message).toMatch(/daily limit/);
+    expect(e.message).toMatch(/midnight Pacific/);
+    expect(e.message).not.toMatch(/Try again in about/);
+  });
+
+  it("handles OpenAI-style 429s with a Retry-After header", () => {
+    const msg = errorMessageFrom(429, '{"error":{"message":"Too many requests"}}', "7");
+    expect(msg).toMatch(/Too many requests/);
+    expect(msg).toMatch(/Try again in about 7 s/);
+    expect(errorMessageFrom(429, "{}", null)).toMatch(/Wait a moment/);
+  });
+
+  it("builds the hint on its own", () => {
+    expect(rateLimitHint("x", 3)).toMatch(/about 3 s/);
+    expect(rateLimitHint("PerDay", 3)).toMatch(/daily/);
   });
 });

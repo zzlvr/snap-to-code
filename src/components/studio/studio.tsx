@@ -10,7 +10,7 @@ import { useLiveModels } from "@/hooks/use-live-models";
 import { useSettings } from "@/hooks/use-settings";
 import { filesToImageData } from "@/lib/image";
 import { detectLocalModels, type LocalModels } from "@/lib/local-detect";
-import { bestModel, fetchModelIds } from "@/lib/models";
+import { bestModel, fetchModelIds, lighterModel } from "@/lib/models";
 import { runPipeline } from "@/lib/pipeline";
 import { getPreset, validateConfig } from "@/lib/providers";
 import { ApiError } from "@/lib/sse";
@@ -172,7 +172,24 @@ export function Studio() {
         if (next) return generate(next, true);
       }
       setStage("error");
-      toast.error(e instanceof Error ? e.message : "Something went wrong. Try again.");
+      const message = e instanceof Error ? e.message : "Something went wrong. Try again.";
+      // Out of quota: offer the lighter model in one tap, since its limits are usually more generous.
+      const lighter =
+        e instanceof ApiError && e.status === 429
+          ? lighterModel(providerId, liveModels.length > 0 ? liveModels : getPreset(providerId).models, cfg.model)
+          : null;
+      toast.error(message, {
+        duration: e instanceof ApiError && e.status === 429 ? 15000 : undefined,
+        action: lighter
+          ? {
+              label: `Use ${lighter}`,
+              onClick: () => {
+                patch({ model: lighter });
+                toast.info(`Switched to ${lighter}. Press Generate code to try again.`);
+              },
+            }
+          : undefined,
+      });
     }
   }
 

@@ -67,7 +67,7 @@ Providers rename and retire models, so the app doesn't depend on a fixed list.
 - A model you picked is never replaced beforehand.
 - The built-in list in `src/lib/providers.ts` is only a fallback for when the provider's list can't be fetched.
 
-Rate limits (429) and temporary server errors (500, 502, 503, 504) are handled too: the app shows how long to wait, offers a lighter model, and retries server errors a couple of times on its own.
+Rate limits (429) and temporary server errors (500, 502, 503, 504) are handled too: the app retries server errors a couple of times on its own, then tries the provider's lighter model once for that run (your setting stays as it is). If that fails too, it shows how long to wait and offers the lighter model.
 
 ### Ollama and other local servers
 

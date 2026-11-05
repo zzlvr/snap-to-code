@@ -135,7 +135,7 @@ export function Studio() {
     return { ...cfg, model: next };
   }
 
-  async function generate(cfg: LLMConfig = config, retried = false) {
+  async function generate(cfg: LLMConfig = config, retried = false, fellBack = false) {
     if (!image) return;
     if (configProblem) {
       setSettingsOpen(true); // a missing key is fixed in the settings dialog, not by an error toast
@@ -180,6 +180,14 @@ export function Studio() {
       if (!retried && e instanceof ApiError && e.status === 404) {
         const next = await recoverModel(cfg);
         if (next) return generate(next, true);
+      }
+      // The model stayed busy or out of quota: try the lighter one once, for this run only. Your setting is not changed.
+      if (!fellBack && e instanceof ApiError && (e.status === 429 || e.status >= 500)) {
+        const alt = lighterModel(providerId, liveModels.length > 0 ? liveModels : getPreset(providerId).models, cfg.model);
+        if (alt) {
+          toast.info(`${cfg.model} is busy. Trying ${alt} for this run.`);
+          return generate({ ...cfg, model: alt }, retried, true);
+        }
       }
       setNotice(null);
       setStage("error");

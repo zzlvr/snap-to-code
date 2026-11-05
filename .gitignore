@@ -42,3 +42,6 @@ next-env.d.ts
 
 # local test results: copies of other sites designs and generated code, never publish
 /results/
+
+# written by the Next.js dev server
+AGENTS.md

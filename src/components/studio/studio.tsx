@@ -147,6 +147,8 @@ export function Studio() {
     setFiles([]);
     setNotice(null);
     setTab("compare");
+    // With a lighter model to fall back on, one retry is enough: waiting on a busy model rarely helps.
+    const fallback = fellBack ? null : lighterModel(providerId, liveModels.length > 0 ? liveModels : getPreset(providerId).models, cfg.model);
     try {
       const result = await runPipeline(
         cfg,
@@ -168,6 +170,7 @@ export function Studio() {
           onRetry: (attempt, attempts) => setNotice(`The model is busy. Trying again (try ${attempt} of ${attempts})…`),
         },
         ctrl.signal,
+        { retryDelays: fallback ? [3] : undefined },
       );
       setFiles(result);
       setStage("done");
@@ -182,12 +185,9 @@ export function Studio() {
         if (next) return generate(next, true);
       }
       // The model stayed busy or out of quota: try the lighter one once, for this run only. Your setting is not changed.
-      if (!fellBack && e instanceof ApiError && (e.status === 429 || e.status >= 500)) {
-        const alt = lighterModel(providerId, liveModels.length > 0 ? liveModels : getPreset(providerId).models, cfg.model);
-        if (alt) {
-          toast.info(`${cfg.model} is busy. Trying ${alt} for this run.`);
-          return generate({ ...cfg, model: alt }, retried, true);
-        }
+      if (fallback && e instanceof ApiError && (e.status === 429 || e.status >= 500)) {
+        toast.info(`${cfg.model} is busy. Trying ${fallback} for this run.`);
+        return generate({ ...cfg, model: fallback }, retried, true);
       }
       setNotice(null);
       setStage("error");

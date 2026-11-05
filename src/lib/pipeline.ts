@@ -18,6 +18,7 @@ export async function runPipeline(
   image: ImageData,
   cb: Callbacks,
   signal: AbortSignal,
+  options: { retryDelays?: number[] } = {},
 ): Promise<GeneratedFile[]> {
   cb.onStage("analyzing");
   let text = "";
@@ -28,6 +29,7 @@ export async function runPipeline(
     json: true,
     signal,
     onRetry: cb.onRetry,
+    retryDelays: options.retryDelays,
   })) {
     text += chunk;
   }
@@ -43,6 +45,7 @@ export async function runPipeline(
     images: image.parts,
     signal,
     onRetry: cb.onRetry,
+    retryDelays: options.retryDelays,
   })) {
     text += chunk;
     const now = Date.now();

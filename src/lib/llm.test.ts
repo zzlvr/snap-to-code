@@ -191,7 +191,12 @@ describe("unreachable server", () => {
 
 describe("automatic retry of temporary server failures", () => {
   const cfg = (): LLMConfig => ({ protocol: "openai", apiKey: "k", model: "m", baseUrl: `${base}/v1` });
-  const collect = async (opts: { onRetry?: (a: number, n: number) => void; signal?: AbortSignal; retryDelays?: number[] }) => {
+  const collect = async (opts: {
+    onRetry?: (a: number, n: number) => void;
+    signal?: AbortSignal;
+    retryDelays?: number[];
+    firstChunkTimeoutMs?: number;
+  }) => {
     let out = "";
     for await (const c of streamLLM(cfg(), { system: "S", prompt: "P", images: [image], retryDelays: [0, 0], ...opts })) out += c;
     return out;
@@ -237,6 +242,40 @@ describe("automatic retry of temporary server failures", () => {
     };
     await expect(collect({})).rejects.toThrow(/bad request/);
     expect(hits).toBe(1);
+  });
+
+  it("gives up on a try that never starts answering and reports it as a timeout", async () => {
+    respond = () => {
+      /* the server accepts the request and stays silent */
+    };
+    const err = await collect({ retryDelays: [], firstChunkTimeoutMs: 80 }).catch((e) => e);
+    expect(err).toBeInstanceOf(ApiError);
+    expect(err.status).toBe(504);
+    expect(err.message).toMatch(/did not start answering/);
+  });
+
+  it("retries after a silent try and returns the answer of the next one", async () => {
+    let hits = 0;
+    respond = (res) => {
+      if (++hits === 1) return; // silent
+      ok(res);
+    };
+    const retries: [number, number][] = [];
+    expect(await collect({ firstChunkTimeoutMs: 80, retryDelays: [0], onRetry: (a, n) => retries.push([a, n]) })).toBe("Hi");
+    expect(hits).toBe(2);
+    expect(retries).toEqual([[2, 2]]);
+  });
+
+  it("does not cut off an answer that has started, even if it pauses", async () => {
+    respond = (res) => {
+      res.writeHead(200, { "Content-Type": "text/event-stream" });
+      res.write('data: {"choices":[{"delta":{"content":"A"}}]}\n\n');
+      setTimeout(() => {
+        res.write('data: {"choices":[{"delta":{"content":"B"}}]}\n\n');
+        res.end("data: [DONE]\n\n");
+      }, 200);
+    };
+    expect(await collect({ firstChunkTimeoutMs: 80, retryDelays: [] })).toBe("AB");
   });
 
   it("stops waiting at once when the user presses Stop", async () => {

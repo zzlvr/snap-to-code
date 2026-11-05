@@ -12,9 +12,12 @@ export interface StreamOptions {
   onRetry?: (attempt: number, attempts: number) => void;
   /** Seconds to wait before each retry. Default: 3 then 8 (three tries in all). */
   retryDelays?: number[];
+  /** How long to wait for the first text of an answer before treating the try as failed. Default: 45 seconds. */
+  firstChunkTimeoutMs?: number;
 }
 
 const DEFAULT_RETRY_DELAYS = [3, 8];
+const DEFAULT_FIRST_CHUNK_TIMEOUT_MS = 45_000;
 /** The provider is overloaded or failing for a moment. Not the user's fault, and usually gone within seconds. */
 const TEMPORARY_STATUSES = new Set([500, 502, 503, 504]);
 
@@ -40,20 +43,45 @@ function sleep(ms: number, signal?: AbortSignal): Promise<void> {
  */
 export async function* streamLLM(cfg: LLMConfig, opts: StreamOptions): AsyncGenerator<string> {
   const delays = opts.retryDelays ?? DEFAULT_RETRY_DELAYS;
+  const timeoutMs = opts.firstChunkTimeoutMs ?? DEFAULT_FIRST_CHUNK_TIMEOUT_MS;
   for (let attempt = 0; ; attempt++) {
     let received = false;
+    let timedOut = false;
+    // One controller per try, so a try that never answers can be cut off without touching the user's Stop button.
+    const tryCtrl = new AbortController();
+    const stop = () => tryCtrl.abort();
+    if (opts.signal?.aborted) stop();
+    else opts.signal?.addEventListener("abort", stop, { once: true });
+    let timer: ReturnType<typeof setTimeout> | undefined = setTimeout(() => {
+      timedOut = true;
+      stop();
+    }, timeoutMs);
     try {
-      for await (const chunk of streamOnce(cfg, opts)) {
+      for await (const chunk of streamOnce(cfg, { ...opts, signal: tryCtrl.signal })) {
+        if (timer !== undefined) {
+          clearTimeout(timer);
+          timer = undefined;
+        }
         received = true;
         yield chunk;
       }
       return;
     } catch (e) {
+      const failure =
+        timedOut && !received && !opts.signal?.aborted
+          ? new ApiError(
+              `The model did not start answering within ${Math.round(timeoutMs / 1000)} seconds, so it is probably overloaded. Try again in a minute or switch to another model.`,
+              504,
+            )
+          : e;
       const wait = delays[attempt];
-      const temporary = e instanceof ApiError && TEMPORARY_STATUSES.has(e.status);
-      if (received || wait === undefined || !temporary || opts.signal?.aborted) throw e;
+      const temporary = failure instanceof ApiError && TEMPORARY_STATUSES.has(failure.status);
+      if (received || wait === undefined || !temporary || opts.signal?.aborted) throw failure;
       opts.onRetry?.(attempt + 2, delays.length + 1);
       await sleep(wait * 1000, opts.signal);
+    } finally {
+      if (timer !== undefined) clearTimeout(timer);
+      opts.signal?.removeEventListener("abort", stop);
     }
   }
 }

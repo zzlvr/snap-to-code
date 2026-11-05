@@ -313,7 +313,7 @@ export function Studio() {
                 )}
               </TabsContent>
               <TabsContent value="live" className="mt-4">
-                {resultReady ? <PreviewFrame files={files} /> : <Empty>The live preview appears once the code is ready.</Empty>}
+                {resultReady ? <PreviewFrame files={files} designWidth={image.width} /> : <Empty>The live preview appears once the code is ready.</Empty>}
               </TabsContent>
               <TabsContent value="code" className="mt-4">
                 <CodeViewer files={files} busy={busy} />

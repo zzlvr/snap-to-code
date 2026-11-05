@@ -1,44 +1,67 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { usePreviewStatus } from "@/hooks/use-preview-status";
 import { buildPreviewHtml } from "@/lib/preview-html";
 import type { GeneratedFile } from "@/lib/types";
 
-const WIDTHS = [
-  { label: "Desktop", width: "100%" },
-  { label: "Tablet", width: "768px" },
-  { label: "Mobile", width: "390px" },
-] as const;
+type Size = "desktop" | "tablet" | "mobile";
 
-export function PreviewFrame({ files }: { files: GeneratedFile[] }) {
+const MIN_HEIGHT = 560;
+const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
+
+/**
+ * Live preview of the generated page. Desktop uses the screenshot's own width, scaled down to fit, so the page
+ * breaks into the same columns as the original. Tablet and mobile use fixed widths.
+ */
+export function PreviewFrame({ files, designWidth }: { files: GeneratedFile[]; designWidth: number }) {
   const [nonce, setNonce] = useState(0);
-  const [width, setWidth] = useState<(typeof WIDTHS)[number]["width"]>("100%");
+  const [size, setSize] = useState<Size>("desktop");
+  const [box, setBox] = useState({ width: 0, height: 0 });
+  const boxRef = useRef<HTMLDivElement>(null);
   const frameRef = useRef<HTMLIFrameElement>(null);
   const { error, ready, reset } = usePreviewStatus(frameRef);
 
   // "Reload" only remounts the iframe (new key), so the HTML itself depends on files alone.
   const html = useMemo(() => buildPreviewHtml(files), [files]);
 
+  useEffect(() => {
+    const el = boxRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([entry]) => setBox({ width: entry.contentRect.width, height: entry.contentRect.height }));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const widths: Record<Size, number> = { desktop: clamp(Math.round(designWidth), 1024, 1920), tablet: 768, mobile: 390 };
+  const frameWidth = widths[size];
+  const scale = box.width > 0 ? Math.min(1, box.width / frameWidth) : 1;
+  const shownHeight = Math.max(box.height, MIN_HEIGHT);
+
   return (
     <div className="flex h-full flex-col gap-2">
       <div className="flex items-center justify-between gap-2">
-        <div role="group" aria-label="Preview width" className="inline-flex rounded-md border p-0.5">
-          {WIDTHS.map((w) => (
-            <button
-              key={w.label}
-              type="button"
-              onClick={() => setWidth(w.width)}
-              aria-pressed={width === w.width}
-              className={`rounded px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                width === w.width ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {w.label}
-            </button>
-          ))}
+        <div className="flex items-center gap-3">
+          <div role="group" aria-label="Preview width" className="inline-flex rounded-md border p-0.5">
+            {(["desktop", "tablet", "mobile"] as const).map((s) => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => setSize(s)}
+                aria-pressed={size === s}
+                className={`rounded px-2.5 py-1 text-xs font-medium capitalize transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                  size === s ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+          <span className="hidden text-xs text-muted-foreground sm:inline">
+            {frameWidth}px{scale < 1 ? `, shown at ${Math.round(scale * 100)}%` : ""}
+          </span>
         </div>
         <Button
           size="sm"
@@ -51,7 +74,11 @@ export function PreviewFrame({ files }: { files: GeneratedFile[] }) {
           <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" /> Reload
         </Button>
       </div>
-      <div className="relative flex-1 overflow-auto rounded-md border bg-[repeating-conic-gradient(var(--muted)_0%_25%,transparent_0%_50%)] bg-[length:16px_16px] overscroll-contain">
+      <div
+        ref={boxRef}
+        className="relative flex-1 overflow-auto rounded-md border bg-[repeating-conic-gradient(var(--muted)_0%_25%,transparent_0%_50%)] bg-[length:16px_16px] overscroll-contain"
+        style={{ minHeight: MIN_HEIGHT }}
+      >
         {!ready && !error && (
           <p
             role="status"
@@ -61,16 +88,20 @@ export function PreviewFrame({ files }: { files: GeneratedFile[] }) {
             Rendering the generated UI…
           </p>
         )}
-        <iframe
-          ref={frameRef}
-          key={nonce}
-          title="Live preview"
-          // No allow-same-origin: generated code runs in an opaque origin and cannot touch this app.
-          sandbox="allow-scripts"
-          srcDoc={html}
-          style={{ width }}
-          className="mx-auto block h-full min-h-[560px] max-w-full bg-white"
-        />
+        {/* The iframe has the real width; the wrapper shrinks it to the space available. */}
+        <div className="mx-auto" style={{ width: frameWidth * scale, height: shownHeight }}>
+          <div className="origin-top-left" style={{ width: frameWidth, height: shownHeight / scale, transform: `scale(${scale})` }}>
+            <iframe
+              ref={frameRef}
+              key={nonce}
+              title="Live preview"
+              // No allow-same-origin: generated code runs in an opaque origin and cannot touch this app.
+              sandbox="allow-scripts"
+              srcDoc={html}
+              className="block h-full w-full border-0 bg-white"
+            />
+          </div>
+        </div>
       </div>
       {error && (
         <p

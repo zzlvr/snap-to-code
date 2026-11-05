@@ -21,6 +21,7 @@ export function PreviewFrame({ files, designWidth }: { files: GeneratedFile[]; d
   const [size, setSize] = useState<Size>("desktop");
   const [box, setBox] = useState({ width: 0, height: 0 });
   const boxRef = useRef<HTMLDivElement>(null);
+  const sized = useRef(false);
   const frameRef = useRef<HTMLIFrameElement>(null);
   const { error, ready, reset } = usePreviewStatus(frameRef);
 
@@ -30,7 +31,15 @@ export function PreviewFrame({ files, designWidth }: { files: GeneratedFile[]; d
   useEffect(() => {
     const el = boxRef.current;
     if (!el) return;
-    const ro = new ResizeObserver(([entry]) => setBox({ width: entry.contentRect.width, height: entry.contentRect.height }));
+    const ro = new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect;
+      setBox({ width, height });
+      // On a phone a desktop-wide page would be shown at a quarter of its size: start at the phone width instead.
+      if (!sized.current && width > 0) {
+        sized.current = true;
+        if (width < 600) setSize("mobile");
+      }
+    });
     ro.observe(el);
     return () => ro.disconnect();
   }, []);

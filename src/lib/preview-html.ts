@@ -1,3 +1,4 @@
+import { CLASS_MERGE_SOURCE } from "./class-merge";
 import type { GeneratedFile } from "./types";
 
 /**
@@ -18,7 +19,7 @@ export function buildPreviewHtml(files: GeneratedFile[]): string {
     filesJson +
     ";</script>" +
     "<script>" +
-    RUNTIME +
+    RUNTIME.replace("__CLASS_MERGE__", () => CLASS_MERGE_SOURCE) +
     "</script></body></html>"
   );
 }
@@ -71,8 +72,9 @@ const RUNTIME = String.raw`
   window.addEventListener("error", function (e) { report(String(e.message || e.error)); });
   window.addEventListener("unhandledrejection", function (e) { report(String(e.reason)); });
 
+  __CLASS_MERGE__
   var cn = function () {
-    return Array.prototype.slice.call(arguments).flat(Infinity).filter(Boolean).join(" ");
+    return twMerge(Array.prototype.slice.call(arguments).flat(Infinity).filter(Boolean).join(" "));
   };
   function mk(tag, base, name) {
     var C = React.forwardRef(function (p, ref) {

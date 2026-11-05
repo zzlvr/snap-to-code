@@ -31,6 +31,7 @@ Tech rules (mandatory):
 - One component per file in components/. Named exports are not allowed: use "export default function Name()". Type props with an interface when there are props.
 - Compose everything in app/page.tsx (default export) importing components via "@/components/Name".
 - Be faithful to the screenshot: layout, spacing, hierarchy, text, colors. Make it responsive where natural: a column count must keep each column wide enough for its content (about 280px or more), so use the screenshot's column count only at a breakpoint wide enough for it (for example 5 columns at 2xl, fewer below).
+- Match shapes and fills exactly. Copy the corner radius you see: rounded-full for pill-shaped buttons, inputs and badges, rounded-xl or larger for cards, rounded-md only when the corners are barely rounded. Decide for every button whether it is solid, light or outline-only, and do not fall back to rounded-md and a dark gray fill.
 - Build only the page. Ignore browser tabs, the address bar, window frames, the OS taskbar or dock, and the mouse cursor if they appear in the image.
 
 Output format (mandatory): ONLY file blocks, no prose, no markdown fences. Each file:

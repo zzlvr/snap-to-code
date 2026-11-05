@@ -6,7 +6,7 @@ Turn a screenshot of a UI into React + Tailwind CSS + shadcn/ui code, split into
 
 ![Paste a screenshot, generate components, drag the divider to compare](docs/demo-v2.gif)
 
-<sub>Recorded run with Claude Sonnet 5.5. The input is a screenshot of [ui.shadcn.com](https://ui.shadcn.com).</sub>
+<sub>Recorded run. The input is a screenshot of [ui.shadcn.com](https://ui.shadcn.com).</sub>
 
 ## What you get
 

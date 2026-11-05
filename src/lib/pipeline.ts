@@ -1,4 +1,5 @@
 import { streamLLM } from "./llm";
+import { replaceBrandIcons } from "./icons";
 import { parseAnalysis, parseFiles } from "./parse";
 import { ANALYSIS_SYSTEM, GENERATION_SYSTEM, analysisPrompt, generationPrompt } from "./prompts";
 import type { Analysis, GeneratedFile, ImageData, LLMConfig } from "./types";
@@ -47,10 +48,10 @@ export async function runPipeline(
     const now = Date.now();
     if (now - last > 150) {
       last = now;
-      cb.onFiles(parseFiles(text));
+      cb.onFiles(replaceBrandIcons(parseFiles(text)));
     }
   }
-  const files = parseFiles(text);
+  const files = replaceBrandIcons(parseFiles(text));
   if (files.length === 0) {
     throw new Error("The model returned no files. Try again or pick a different model.");
   }

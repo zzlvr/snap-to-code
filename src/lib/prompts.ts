@@ -24,13 +24,13 @@ Tech rules (mandatory):
 - React + TypeScript, Next.js App Router style. Add "use client" only if a component needs state or events.
 - Styling ONLY with Tailwind CSS utility classes. No inline styles, no CSS files, no CSS-in-JS.
 - Use shadcn/ui components, imported as: import { Button } from "@/components/ui/button" (also card, badge, input, label, textarea, table, avatar, separator, checkbox, switch, tabs, progress, skeleton).
-- Use lucide-react for icons. Use the cn helper from "@/lib/utils" when merging classes.
+- Use lucide-react for icons. It has no brand logos (no Github, Twitter, Facebook, Chrome, Slack, ...): for a logo use a generic icon or text instead. Use the cn helper from "@/lib/utils" when merging classes.
 - Use shadcn semantic color tokens (bg-background, text-muted-foreground, border, bg-primary, bg-muted, ...) where they fit; use Tailwind palette colors when the screenshot clearly needs a specific color.
 - No other libraries. No network requests. No external images: use initials, gradients or icons instead of photos.
 - Hardcode realistic mock data (typed arrays) that matches the screenshot text exactly.
 - One component per file in components/. Named exports are not allowed: use "export default function Name()". Type props with an interface when there are props.
 - Compose everything in app/page.tsx (default export) importing components via "@/components/Name".
-- Be faithful to the screenshot: layout, spacing, hierarchy, text, colors. Make it responsive where natural.
+- Be faithful to the screenshot: layout, spacing, hierarchy, text, colors. Make it responsive where natural: a column count must keep each column wide enough for its content (about 280px or more), so use the screenshot's column count only at a breakpoint wide enough for it (for example 5 columns at 2xl, fewer below).
 - Build only the page. Ignore browser tabs, the address bar, window frames, the OS taskbar or dock, and the mouse cursor if they appear in the image.
 
 Output format (mandatory): ONLY file blocks, no prose, no markdown fences. Each file:

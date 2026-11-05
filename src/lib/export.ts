@@ -32,6 +32,11 @@ export async function filesToZip(files: GeneratedFile[]): Promise<Blob> {
   return zip.generateAsync({ type: "blob" });
 }
 
+/** The file name without its folders: browsers ignore folders in a download name. */
+export function baseName(path: string): string {
+  return path.split("/").pop() || path;
+}
+
 export function downloadBlob(blob: Blob, name: string) {
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);

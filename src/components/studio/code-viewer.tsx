@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { Check, Copy, Download, FileCode2, ShieldAlert, Terminal } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { downloadBlob, filesToText, filesToZip, shadcnCommand } from "@/lib/export";
+import { baseName, downloadBlob, filesToText, filesToZip, shadcnCommand } from "@/lib/export";
 import { scanGeneratedCode } from "@/lib/scan";
 import type { GeneratedFile } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -32,10 +32,16 @@ export function CodeViewer({ files, busy }: { files: GeneratedFile[]; busy: bool
   async function downloadZip() {
     try {
       downloadBlob(await filesToZip(files), "snap-to-code.zip");
+      toast.success(`Downloaded snap-to-code.zip with all ${files.length} files`);
     } catch {
       // The ZIP library is loaded on demand, so this fails when the network is down.
       toast.error("Could not build the ZIP. Check your connection and try again, or use Copy all files.");
     }
+  }
+
+  function downloadOne(file: GeneratedFile) {
+    downloadBlob(new Blob([file.code], { type: "text/plain" }), baseName(file.path));
+    toast.success(`Downloaded ${baseName(file.path)}. Put it in ${file.path.includes("/") ? file.path.slice(0, file.path.lastIndexOf("/") + 1) : "your project"}`);
   }
 
   if (files.length === 0) {
@@ -65,7 +71,7 @@ export function CodeViewer({ files, busy }: { files: GeneratedFile[]; busy: bool
           Copy all files
         </Button>
         <Button size="sm" variant="outline" disabled={busy} onClick={downloadZip}>
-          <Download className="h-3.5 w-3.5" /> ZIP
+          <Download className="h-3.5 w-3.5" /> Download all (.zip)
         </Button>
         {cmd && (
           <Button size="sm" variant="ghost" onClick={() => copy(cmd, "cmd", "shadcn command copied")}>
@@ -73,6 +79,10 @@ export function CodeViewer({ files, busy }: { files: GeneratedFile[]; busy: bool
           </Button>
         )}
       </div>
+      <p className="text-xs text-muted-foreground">
+        <span className="font-medium text-foreground">Download all (.zip)</span> gives every file in one archive, with the folders. To save a
+        single file, open it below and press <span className="font-medium text-foreground">Download</span>.
+      </p>
 
       <div className="grid gap-3 md:grid-cols-[200px_1fr]">
         <ul className="flex gap-1 overflow-x-auto md:flex-col" aria-label="Files">
@@ -97,14 +107,26 @@ export function CodeViewer({ files, busy }: { files: GeneratedFile[]; busy: bool
         <div className="min-w-0 overflow-hidden rounded-md border bg-foreground text-background">
           <div className="flex items-center justify-between border-b border-zinc-800 px-3 py-1.5">
             <span className="font-mono text-xs text-zinc-400">{current?.path}</span>
-            <button
-              type="button"
-              onClick={() => current && copy(current.code, current.path, `${current.path} copied`)}
-              className="rounded p-1 text-zinc-400 hover:text-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime"
-              aria-label="Copy file"
-            >
-              {copied === current?.path ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => current && copy(current.code, current.path, `${current.path} copied`)}
+                className="flex items-center gap-1.5 rounded px-1.5 py-1 text-xs text-zinc-400 hover:text-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime"
+                aria-label="Copy this file"
+              >
+                {copied === current?.path ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                Copy
+              </button>
+              <button
+                type="button"
+                onClick={() => current && downloadOne(current)}
+                className="flex items-center gap-1.5 rounded px-1.5 py-1 text-xs text-zinc-400 hover:text-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime"
+                aria-label="Download this file"
+              >
+                <Download className="h-3.5 w-3.5" />
+                Download
+              </button>
+            </div>
           </div>
           {/* Scrollable region: focusable so keyboard users can scroll it. */}
           <pre

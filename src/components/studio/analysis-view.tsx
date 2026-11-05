@@ -8,7 +8,7 @@ export function AnalysisView({ analysis }: { analysis: Analysis | null }) {
   return (
     <div className="space-y-5">
       <div className="space-y-1">
-        <h3 className="text-sm font-semibold">{analysis.summary}</h3>
+        <h2 className="text-sm font-semibold">{analysis.summary}</h2>
         <p className="text-sm text-muted-foreground">
           <span className="font-medium text-foreground">Style:</span> {analysis.style}
         </p>

@@ -51,6 +51,8 @@ export function Studio() {
   const [files, setFiles] = useState<GeneratedFile[]>([]);
   const [tab, setTab] = useState("compare");
   const [notice, setNotice] = useState<string | null>(null);
+  // The model that actually produced the result: it can differ from the setting after a fallback or a retired model.
+  const [usedModel, setUsedModel] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   const busy = stage === "analyzing" || stage === "generating";
@@ -146,6 +148,7 @@ export function Studio() {
     setAnalysis(null);
     setFiles([]);
     setNotice(null);
+    setUsedModel(null);
     setTab("compare");
     // With a lighter model to fall back on, one retry is enough: waiting on a busy model rarely helps.
     const fallback = fellBack ? null : lighterModel(providerId, liveModels.length > 0 ? liveModels : getPreset(providerId).models, cfg.model);
@@ -173,6 +176,7 @@ export function Studio() {
         { retryDelays: fallback ? [3] : undefined },
       );
       setFiles(result);
+      setUsedModel(cfg.model);
       setStage("done");
       setTab("compare");
     } catch (e) {
@@ -255,7 +259,7 @@ export function Studio() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="flex min-h-5 items-center gap-2 text-sm text-muted-foreground" role="status" aria-live="polite">
               {busy && <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />}
-              {busy && notice ? notice : STAGE_LABEL[stage]}
+              {busy && notice ? notice : stage === "done" && usedModel ? `Done with ${usedModel}. Drag the handle to compare.` : STAGE_LABEL[stage]}
               {stage === "idle" &&
                 !configProblem &&
                 `Ready. ${sourceCount > 1 ? `${sourceCount} screenshots stacked top to bottom. ` : ""}${

@@ -4,9 +4,9 @@ Turn a screenshot of a UI into React + Tailwind CSS + shadcn/ui code, split into
 
 **Live demo: https://snap-to-code.vercel.app**
 
-![Paste a screenshot, generate components, drag the divider to compare](docs/demo-v2.gif)
+![Paste a screenshot, generate components, drag the divider to compare](docs/demo-v3.gif)
 
-<sub>Recorded run. The input is a screenshot of [ui.shadcn.com](https://ui.shadcn.com).</sub>
+<sub>Recorded run with Claude Haiku 5.5. The input is a screenshot of [ui.shadcn.com](https://ui.shadcn.com).</sub>
 
 ## What you get
 

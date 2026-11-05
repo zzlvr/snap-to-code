@@ -209,16 +209,16 @@ export function Studio() {
   return (
     <div id="studio" className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 pb-12">
       <header className="flex items-center justify-between gap-4 pt-8">
-        <div className="flex items-center gap-3">
+        <div className="flex shrink-0 items-center gap-3">
           <svg width="32" height="32" viewBox="0 0 36 36" fill="none" aria-hidden="true">
             <path d="M3 11V3h8M25 3h8v8M33 25v8h-8M11 33H3v-8" stroke="currentColor" strokeWidth="2.5" strokeLinecap="square" />
             <rect x="14" y="14" width="8" height="8" fill="var(--lime)" />
           </svg>
-          <h1 translate="no" className="font-heading text-2xl font-bold leading-none tracking-tight">
+          <h1 translate="no" className="font-heading text-2xl font-bold leading-none tracking-tight whitespace-nowrap">
             Snap to Code
           </h1>
         </div>
-        <Button variant="outline" onClick={() => setSettingsOpen(true)} aria-haspopup="dialog" className="max-w-[60vw]">
+        <Button variant="outline" onClick={() => setSettingsOpen(true)} aria-haspopup="dialog" className="min-w-0 shrink max-w-[60vw]">
           <Settings2 className="h-4 w-4 shrink-0" aria-hidden="true" />
           <span className="truncate">{modelLabel}</span>
           {loaded && configProblem && (

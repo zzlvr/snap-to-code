@@ -45,7 +45,7 @@ Everything you add is treated as one page, top to bottom.
 
 Any model that accepts images and has an API. The model name is free text, so new models work as soon as they ship.
 
-Chat subscriptions (ChatGPT Plus, Claude Pro and similar) don't include an API key and can't be used here. You need an API key from the provider (billed per use), a free-tier key such as Gemini's, or a local model.
+Chat subscriptions (ChatGPT Plus, Claude Pro and similar) don't include an API key and can't be used here. You need an API key from the provider (billed per use), a free-tier key such as Gemini's, or a local model. Free tiers have low limits and are served last, so at busy hours you may get "model is busy": wait a minute, pick the lighter model, or use a paid key or a local model.
 
 | Provider | Protocol | Key | Notes |
 | --- | --- | --- | --- |

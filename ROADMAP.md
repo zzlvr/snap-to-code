@@ -41,3 +41,14 @@ When the above is done, in no fixed order. Several of these need a server.
 13. **Team collaboration.** Shared projects, team workspaces, reusable design systems, and collaboration features for agencies and development teams.
 
 14. **A model trained for this task.** Develop a specialized model for visual-to-code generation. It would plug in through the custom OpenAI-compatible endpoint, so the app needs no changes. Requires a dataset of screenshot/video and code pairs with suitable licences, an evaluation set, and compute for fine-tuning.
+
+## How this becomes a business
+
+The app stays free and open source, and you keep using your own model key, so serving it costs nothing. Revenue comes from what a browser-only app cannot do well:
+
+- **Free, open source.** Items 1–6: generation quality and bring-your-own-model.
+- **Pro, hosted account.** Saved projects (12), Figma import (11) and one-click pull requests (9) for individuals and small teams.
+- **Teams and agencies.** Your design system (7), existing projects (8), shared workspaces (13): the work that saves a team hours on every screen, priced per seat.
+- **Platform.** Hosted URL and video import (10, 11), an API for other tools, and a model trained for this task (14) to lower the cost of each generation.
+
+Prices will be set after the free version shows what people use most.

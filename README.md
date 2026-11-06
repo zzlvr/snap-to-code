@@ -136,6 +136,10 @@ Push to GitHub and import the repo in Vercel. No environment variables are neede
 - The preview uses simplified shadcn/ui components (Button, Card, Table, Tabs, ...). Complex ones (dropdown, dialog) render as plain blocks. It loads Tailwind and React from a CDN, so it needs internet access.
 - Output quality depends on the model. Review the code before using it.
 
+## Hosted version
+
+Don't want to deal with API keys? I'm thinking about a paid hosted version where you just sign in and generate, with no key of your own. If you'd use it, [open an issue](https://github.com/zzlvr/snap-to-code/issues/new) and tell me.
+
 ## Roadmap
 
 See [ROADMAP.md](ROADMAP.md).

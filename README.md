@@ -144,6 +144,10 @@ Don't want to deal with API keys? I'm thinking about a paid hosted version where
 
 See [ROADMAP.md](ROADMAP.md).
 
+## Contact
+
+Questions, ideas, partnerships: ars.fou1@gmail.com
+
 ## License
 
 [MIT](LICENSE)

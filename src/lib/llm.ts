@@ -44,6 +44,8 @@ function sleep(ms: number, signal?: AbortSignal): Promise<void> {
 export async function* streamLLM(cfg: LLMConfig, opts: StreamOptions): AsyncGenerator<string> {
   const delays = opts.retryDelays ?? DEFAULT_RETRY_DELAYS;
   const timeoutMs = opts.firstChunkTimeoutMs ?? DEFAULT_FIRST_CHUNK_TIMEOUT_MS;
+  // A model that stays silent twice is not going to answer a third time: stop there instead of waiting minutes more.
+  let silentTries = 0;
   for (let attempt = 0; ; attempt++) {
     let received = false;
     let timedOut = false;
@@ -74,9 +76,10 @@ export async function* streamLLM(cfg: LLMConfig, opts: StreamOptions): AsyncGene
               504,
             )
           : e;
+      if (timedOut && !received) silentTries++;
       const wait = delays[attempt];
       const temporary = failure instanceof ApiError && TEMPORARY_STATUSES.has(failure.status);
-      if (received || wait === undefined || !temporary || opts.signal?.aborted) throw failure;
+      if (received || wait === undefined || !temporary || opts.signal?.aborted || silentTries >= 2) throw failure;
       opts.onRetry?.(attempt + 2, delays.length + 1);
       await sleep(wait * 1000, opts.signal);
     } finally {

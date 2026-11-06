@@ -266,6 +266,17 @@ describe("automatic retry of temporary server failures", () => {
     expect(retries).toEqual([[2, 2]]);
   });
 
+  it("stops after two silent tries even when more retries are allowed", async () => {
+    let hits = 0;
+    respond = () => {
+      hits++; // silent every time
+    };
+    const err = await collect({ firstChunkTimeoutMs: 60, retryDelays: [0, 0] }).catch((e) => e);
+    expect(err).toBeInstanceOf(ApiError);
+    expect(err.status).toBe(504);
+    expect(hits).toBe(2);
+  });
+
   it("does not cut off an answer that has started, even if it pauses", async () => {
     respond = (res) => {
       res.writeHead(200, { "Content-Type": "text/event-stream" });

@@ -1,5 +1,7 @@
 # Roadmap
 
+Today the app runs entirely in your browser. Some items below need a server and will be added later.
+
 ## Core Generation & Refinement
 
 1. **Auto-correction.** Render the result, compare it with the screenshot, ask the model to fix the differences, and repeat for a few rounds. The preview runs in a sandboxed iframe, so the render has to be captured from inside it and sent out with `postMessage`. Rounds are capped and visible, because each one is another model call.

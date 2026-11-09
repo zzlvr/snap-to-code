@@ -1,3 +1,4 @@
+import type { DesignSystem } from "./design-system";
 import { buildPreviewHtml } from "./preview-html";
 import type { GeneratedFile } from "./types";
 
@@ -18,6 +19,7 @@ export function captureRender(
   files: GeneratedFile[],
   size: { width: number; height: number },
   signal?: AbortSignal,
+  designSystem?: DesignSystem | null,
 ): Promise<Capture> {
   return new Promise((resolve, reject) => {
     const iframe = document.createElement("iframe");
@@ -57,7 +59,7 @@ export function captureRender(
 
     window.addEventListener("message", onMessage);
     signal?.addEventListener("abort", onAbort);
-    iframe.srcdoc = buildPreviewHtml(files, { capture: true });
+    iframe.srcdoc = buildPreviewHtml(files, { capture: true, designSystem });
     document.body.appendChild(iframe);
   });
 }

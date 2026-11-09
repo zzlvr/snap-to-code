@@ -1,7 +1,8 @@
 import { streamLLM } from "./llm";
 import { replaceBrandIcons } from "./icons";
 import { parseAnalysis, parseFiles } from "./parse";
-import { ANALYSIS_SYSTEM, GENERATION_SYSTEM, analysisPrompt, generationPrompt } from "./prompts";
+import type { DesignSystem } from "./design-system";
+import { ANALYSIS_SYSTEM, GENERATION_SYSTEM, analysisPrompt, generationPrompt, withDesignSystem } from "./prompts";
 import type { Analysis, GeneratedFile, ImageData, LLMConfig } from "./types";
 
 interface Callbacks {
@@ -18,7 +19,7 @@ export async function runPipeline(
   image: ImageData,
   cb: Callbacks,
   signal: AbortSignal,
-  options: { retryDelays?: number[] } = {},
+  options: { retryDelays?: number[]; designSystem?: DesignSystem | null } = {},
 ): Promise<GeneratedFile[]> {
   cb.onStage("analyzing");
   let text = "";
@@ -40,7 +41,7 @@ export async function runPipeline(
   text = "";
   let last = 0;
   for await (const chunk of streamLLM(cfg, {
-    system: GENERATION_SYSTEM,
+    system: withDesignSystem(GENERATION_SYSTEM, options.designSystem),
     prompt: generationPrompt(analysis, image.parts.length),
     images: image.parts,
     signal,

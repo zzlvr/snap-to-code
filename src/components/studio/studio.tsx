@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { ImagePlus, Loader2, Settings2, Sparkles, Square, Undo2 } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ImagePlus, Loader2, Palette, Settings2, Sparkles, Square, Undo2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -10,6 +10,7 @@ import { useLiveModels } from "@/hooks/use-live-models";
 import { MAX_ROUNDS, useRounds } from "@/hooks/use-rounds";
 import { useSettings } from "@/hooks/use-settings";
 import { captureRender } from "@/lib/capture";
+import { extractDesignSystem, hasDesignSystem, type DesignSystem, type InputFile } from "@/lib/design-system";
 import { filesToImageData, pictureToParts } from "@/lib/image";
 import { detectLocalModels, type LocalModels } from "@/lib/local-detect";
 import { bestModel, fetchModelIds, lighterModel } from "@/lib/models";
@@ -59,6 +60,10 @@ export function Studio() {
   const [usedModel, setUsedModel] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const { rounds, setRounds } = useRounds();
+  // The project's own styling (theme CSS, Tailwind config, UI components), read from files the user adds. Stays in this tab.
+  const [designFiles, setDesignFiles] = useState<InputFile[]>([]);
+  const designSystem = useMemo<DesignSystem | null>(() => (designFiles.length > 0 ? extractDesignSystem(designFiles) : null), [designFiles]);
+  const designInput = useRef<HTMLInputElement>(null);
   // The files as first written, kept while corrections are applied so they can be undone.
   const [uncorrected, setUncorrected] = useState<GeneratedFile[] | null>(null);
 
@@ -86,9 +91,9 @@ export function Studio() {
       setStage("refining");
       setNotice(`Checking the result against your screenshot (round ${round} of ${rounds})…`);
       try {
-        const shot = await captureRender(current, { width: Math.max(320, img.width), height: Math.min(img.height, 1600) }, ctrl.signal);
+        const shot = await captureRender(current, { width: Math.max(320, img.width), height: Math.min(img.height, 1600) }, ctrl.signal, designSystem);
         const render = await pictureToParts(shot.dataUrl, shot.width, shot.height);
-        const result = await refineOnce(cfg, img.parts, render, current, ctrl.signal);
+        const result = await refineOnce(cfg, img.parts, render, current, ctrl.signal, designSystem);
         if (result.changed.length === 0) break;
         current = result.files;
         setFiles(current);
@@ -102,6 +107,21 @@ export function Studio() {
     }
     setNotice(null);
     return current;
+  }
+
+  async function addDesignFiles(list: FileList | null) {
+    const picked = Array.from(list ?? []);
+    if (picked.length === 0) return;
+    const read = await Promise.all(picked.map(async (f) => ({ name: f.name, text: await f.text() })));
+    // Files added later join the earlier ones; a file with the same name replaces its older copy.
+    const next = [...designFiles.filter((old) => !read.some((r) => r.name === old.name)), ...read];
+    const ds = extractDesignSystem(next);
+    if (!hasDesignSystem(ds)) {
+      toast.error("No styling found. Add your globals.css, tailwind.config and the files from components/ui.");
+      return;
+    }
+    setDesignFiles(next);
+    toast.success(`Using your design system (${ds.sources.join(", ")}). Generate again to apply it.`);
   }
 
   /** Rebuilds the page from a new list of screenshots. Calls run one after another. */
@@ -211,7 +231,7 @@ export function Studio() {
           onRetry: (attempt, attempts) => setNotice(`The model is busy. Trying again (try ${attempt} of ${attempts})…`),
         },
         ctrl.signal,
-        { retryDelays: fallback ? [3] : undefined },
+        { retryDelays: fallback ? [3] : undefined, designSystem },
       );
       setFiles(result);
       setUsedModel(cfg.model);
@@ -344,6 +364,37 @@ export function Studio() {
                   <Undo2 className="h-4 w-4" aria-hidden="true" /> Undo corrections
                 </Button>
               )}
+              <input
+                ref={designInput}
+                type="file"
+                name="design-files"
+                accept=".css,.js,.cjs,.mjs,.ts,.tsx,.jsx"
+                multiple
+                className="hidden"
+                tabIndex={-1}
+                onChange={(e) => {
+                  void addDesignFiles(e.target.files);
+                  e.target.value = "";
+                }}
+              />
+              <Button
+                variant="outline"
+                disabled={busy}
+                onClick={() => designInput.current?.click()}
+                title={
+                  designSystem
+                    ? `In use: ${designSystem.sources.join(", ")}. Click to add more files.`
+                    : "Add your globals.css, tailwind.config and files from components/ui so the code uses your colours and components."
+                }
+              >
+                <Palette className="h-4 w-4" aria-hidden="true" />
+                {designSystem ? `Your design (${designSystem.sources.length})` : "Add your design"}
+              </Button>
+              {designSystem && (
+                <Button variant="outline" size="icon" disabled={busy} onClick={() => setDesignFiles([])} aria-label="Remove your design system">
+                  <X className="h-4 w-4" aria-hidden="true" />
+                </Button>
+              )}
               <select
                 aria-label="Correction rounds after generating"
                 title="After the code is written, the page is drawn, compared with your screenshot, and the model fixes the differences. Each round is one more model call."
@@ -386,13 +437,13 @@ export function Studio() {
               </TabsList>
               <TabsContent value="compare" className="mt-4">
                 {resultReady ? (
-                  <CompareView image={image} files={files} />
+                  <CompareView image={image} files={files} designSystem={designSystem} />
                 ) : (
                   <OriginalStage image={image} scanning={stage === "analyzing"} />
                 )}
               </TabsContent>
               <TabsContent value="live" className="mt-4">
-                {resultReady ? <PreviewFrame files={files} designWidth={image.width} /> : <Empty>The live preview appears once the code is ready.</Empty>}
+                {resultReady ? <PreviewFrame files={files} designWidth={image.width} designSystem={designSystem} /> : <Empty>The live preview appears once the code is ready.</Empty>}
               </TabsContent>
               <TabsContent value="code" className="mt-4">
                 <CodeViewer files={files} busy={busy} />

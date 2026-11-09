@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { usePreviewStatus } from "@/hooks/use-preview-status";
+import type { DesignSystem } from "@/lib/design-system";
 import { buildPreviewHtml } from "@/lib/preview-html";
 import type { GeneratedFile } from "@/lib/types";
 
@@ -16,7 +17,7 @@ const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n
  * Live preview of the generated page. Desktop uses the screenshot's own width, scaled down to fit, so the page
  * breaks into the same columns as the original. Tablet and mobile use fixed widths.
  */
-export function PreviewFrame({ files, designWidth }: { files: GeneratedFile[]; designWidth: number }) {
+export function PreviewFrame({ files, designWidth, designSystem }: { files: GeneratedFile[]; designWidth: number; designSystem?: DesignSystem | null }) {
   const [nonce, setNonce] = useState(0);
   const [size, setSize] = useState<Size>("desktop");
   const [box, setBox] = useState({ width: 0, height: 0 });
@@ -26,7 +27,7 @@ export function PreviewFrame({ files, designWidth }: { files: GeneratedFile[]; d
   const { error, ready, reset } = usePreviewStatus(frameRef);
 
   // "Reload" only remounts the iframe (new key), so the HTML itself depends on files alone.
-  const html = useMemo(() => buildPreviewHtml(files), [files]);
+  const html = useMemo(() => buildPreviewHtml(files, { designSystem }), [files, designSystem]);
 
   useEffect(() => {
     const el = boxRef.current;

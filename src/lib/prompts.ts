@@ -1,3 +1,4 @@
+import { designSystemRules, hasDesignSystem, type DesignSystem } from "./design-system";
 import type { Analysis } from "./types";
 
 export const ANALYSIS_SYSTEM = `You are a senior frontend engineer who decomposes UI screenshots into React components.
@@ -39,6 +40,13 @@ Output format (mandatory): ONLY file blocks, no prose, no markdown fences. Each 
 === FILE: components/Sidebar.tsx ===
 <code>
 Put each marker on its own line, before the file's code. The last file must be app/page.tsx.`;
+
+/** Adds the project's own design system to the instructions, when the user supplied one. */
+export function withDesignSystem(system: string, ds?: DesignSystem | null): string {
+  return hasDesignSystem(ds) ? `${system}
+
+${designSystemRules(ds)}` : system;
+}
 
 export const NO_CHANGES = "NO CHANGES NEEDED";
 

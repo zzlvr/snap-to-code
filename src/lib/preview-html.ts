@@ -1,4 +1,5 @@
 import { CLASS_MERGE_SOURCE } from "./class-merge";
+import { hasDesignSystem, previewTheme, type DesignSystem } from "./design-system";
 import type { GeneratedFile } from "./types";
 
 /**
@@ -7,7 +8,10 @@ import type { GeneratedFile } from "./types";
  * shadcn/ui and lucide-react are provided by lightweight in-iframe implementations,
  * so the preview is a close approximation of the real project, not a byte-exact one.
  */
-export function buildPreviewHtml(files: GeneratedFile[], options: { capture?: boolean } = {}): string {
+export function buildPreviewHtml(
+  files: GeneratedFile[],
+  options: { capture?: boolean; designSystem?: DesignSystem | null } = {},
+): string {
   const map: Record<string, string> = {};
   for (const f of files) map[f.path] = f.code;
   // "<" is escaped so generated code can never close the script tag.
@@ -15,6 +19,7 @@ export function buildPreviewHtml(files: GeneratedFile[], options: { capture?: bo
 
   return (
     HEAD +
+    (hasDesignSystem(options.designSystem) ? themeTag(options.designSystem) : "") +
     (options.capture ? "<script>window.__CAPTURE__ = true;</script>" : "") +
     "<script>window.__FILES__ = " +
     filesJson +
@@ -23,6 +28,20 @@ export function buildPreviewHtml(files: GeneratedFile[], options: { capture?: bo
     RUNTIME.replace("__CLASS_MERGE__", () => CLASS_MERGE_SOURCE) +
     "</script></body></html>"
   );
+}
+
+/** The project's variables, colours and radius, placed after the default palette so they win. Files are untrusted: "<" never gets through. */
+function themeTag(ds: DesignSystem): string {
+  const t = previewTheme(ds);
+  const extend: Record<string, unknown> = {};
+  if (t.colors) extend.colors = t.colors;
+  if (t.radius) extend.borderRadius = t.radius;
+  const safe = (s: string) => s.replace(/</g, "");
+  let out = t.css ? `<style>${safe(t.css)}</style>` : "";
+  if (Object.keys(extend).length > 0) {
+    out += `<script>Object.assign(tailwind.config.theme.extend, ${JSON.stringify(extend).replace(/</g, "\\u003c")});</script>`;
+  }
+  return out;
 }
 
 const HEAD = `<!doctype html>

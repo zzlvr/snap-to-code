@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronsLeftRight, Loader2 } from "lucide-react";
 import { usePreviewStatus } from "@/hooks/use-preview-status";
+import type { DesignSystem } from "@/lib/design-system";
 import { buildPreviewHtml } from "@/lib/preview-html";
 import type { GeneratedFile, ImageData } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -41,7 +42,7 @@ export function OriginalStage({ image, scanning }: { image: ImageData; scanning?
  * Original screenshot on the left, the rendered result on the right, one draggable divider.
  * The result is rendered at the screenshot's own width and scaled to fit, so both sides line up.
  */
-export function CompareView({ image, files }: { image: ImageData; files: GeneratedFile[] }) {
+export function CompareView({ image, files, designSystem }: { image: ImageData; files: GeneratedFile[]; designSystem?: DesignSystem | null }) {
   const [pos, setPos] = useState(50);
   const [scale, setScale] = useState(1);
   const [dragging, setDragging] = useState(false);
@@ -49,7 +50,7 @@ export function CompareView({ image, files }: { image: ImageData; files: Generat
   const frameRef = useRef<HTMLIFrameElement>(null);
   const { error, ready } = usePreviewStatus(frameRef);
 
-  const html = useMemo(() => buildPreviewHtml(files), [files]);
+  const html = useMemo(() => buildPreviewHtml(files, { designSystem }), [files, designSystem]);
   const tall = isTall(image);
   const viewportW = clamp(image.width, 360, 1920);
   const viewportH = Math.round((image.height * viewportW) / image.width);

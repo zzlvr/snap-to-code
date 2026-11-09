@@ -1,7 +1,8 @@
 import { replaceBrandIcons } from "./icons";
 import { streamLLM } from "./llm";
 import { parseFiles } from "./parse";
-import { REFINE_SYSTEM, refinePrompt } from "./prompts";
+import type { DesignSystem } from "./design-system";
+import { REFINE_SYSTEM, refinePrompt, withDesignSystem } from "./prompts";
 import type { GeneratedFile, ImagePart, LLMConfig } from "./types";
 
 /** Puts changed files over the current ones: same path replaces, a new path is added. Order of the current files is kept. */
@@ -37,10 +38,11 @@ export async function refineOnce(
   render: ImagePart[],
   files: GeneratedFile[],
   signal: AbortSignal,
+  designSystem?: DesignSystem | null,
 ): Promise<RefineResult> {
   let text = "";
   for await (const chunk of streamLLM(cfg, {
-    system: REFINE_SYSTEM,
+    system: withDesignSystem(REFINE_SYSTEM, designSystem),
     prompt: refinePrompt(files, design.length, render.length),
     images: [...design, ...render],
     signal,

@@ -88,6 +88,20 @@ const toPart = (canvas: HTMLCanvasElement): ImagePart & { dataUrl: string } => {
   return { mimeType: "image/jpeg", base64: dataUrl.split(",")[1], dataUrl };
 };
 
+/** Cuts a picture of the rendered page into the parts sent to the model, by the same rules as a screenshot. */
+export async function pictureToParts(dataUrl: string, width: number, height: number): Promise<ImagePart[]> {
+  if (width > MAX_SIDE || height > MAX_TOTAL_HEIGHT) throw new Error("The rendered page is too large to compare.");
+  const img = new Image();
+  img.src = dataUrl;
+  await img.decode();
+  return planSegments(height).map((s) => {
+    const { canvas, ctx } = newCanvas(width, s.height);
+    ctx.drawImage(img, 0, s.y, width, s.height, 0, 0, width, s.height);
+    const { mimeType, base64 } = toPart(canvas);
+    return { mimeType, base64 };
+  });
+}
+
 /**
  * Reads one or more screenshots as ONE page, top to bottom, and prepares the images for the model.
  * Several files are stacked in the given order; a very tall page is sliced into overlapping parts.

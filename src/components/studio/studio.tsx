@@ -7,12 +7,15 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useImageIntake } from "@/hooks/use-image-intake";
 import { useLiveModels } from "@/hooks/use-live-models";
+import { MAX_ROUNDS, useRounds } from "@/hooks/use-rounds";
 import { useSettings } from "@/hooks/use-settings";
-import { filesToImageData } from "@/lib/image";
+import { captureRender } from "@/lib/capture";
+import { filesToImageData, pictureToParts } from "@/lib/image";
 import { detectLocalModels, type LocalModels } from "@/lib/local-detect";
 import { bestModel, fetchModelIds, lighterModel } from "@/lib/models";
 import { runPipeline } from "@/lib/pipeline";
 import { getPreset, validateConfig } from "@/lib/providers";
+import { refineOnce } from "@/lib/refine";
 import { ApiError } from "@/lib/sse";
 import type { LLMConfig } from "@/lib/types";
 import type { Analysis, GeneratedFile, ImageData, Stage } from "@/lib/types";
@@ -27,6 +30,7 @@ const STAGE_LABEL: Record<Stage, string> = {
   idle: "",
   analyzing: "Step 1 of 2: reading the interface structure…",
   generating: "Step 2 of 2: writing components…",
+  refining: "Checking the result against your screenshot…",
   done: "Done. Drag the handle to compare.",
   error: "",
 };
@@ -54,8 +58,11 @@ export function Studio() {
   // The model that actually produced the result: it can differ from the setting after a fallback or a retired model.
   const [usedModel, setUsedModel] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const { rounds, setRounds } = useRounds();
+  // The files as first written, kept while corrections are applied so they can be undone.
+  const [uncorrected, setUncorrected] = useState<GeneratedFile[] | null>(null);
 
-  const busy = stage === "analyzing" || stage === "generating";
+  const busy = stage === "analyzing" || stage === "generating" || stage === "refining";
   const liveModels = useLiveModels(providerId, config, (model) => patch({ model }));
   const configProblem = validateConfig(providerId, config);
   const resultReady = stage === "done" && files.length > 0;
@@ -64,7 +71,37 @@ export function Studio() {
     setStage("idle");
     setAnalysis(null);
     setFiles([]);
+    setUncorrected(null);
     setTab("compare");
+  }
+
+  /**
+   * Correction rounds: draws the page, shows the model the design next to the picture, and applies the files it changes.
+   * Never fails the run: on any problem the version written so far is kept.
+   */
+  async function correct(cfg: LLMConfig, start: GeneratedFile[], img: ImageData, ctrl: AbortController): Promise<GeneratedFile[]> {
+    let current = start;
+    for (let round = 1; round <= rounds; round++) {
+      if (ctrl.signal.aborted) break;
+      setStage("refining");
+      setNotice(`Checking the result against your screenshot (round ${round} of ${rounds})…`);
+      try {
+        const shot = await captureRender(current, { width: Math.max(320, img.width), height: Math.min(img.height, 1600) }, ctrl.signal);
+        const render = await pictureToParts(shot.dataUrl, shot.width, shot.height);
+        const result = await refineOnce(cfg, img.parts, render, current, ctrl.signal);
+        if (result.changed.length === 0) break;
+        current = result.files;
+        setFiles(current);
+        setUncorrected((prev) => prev ?? start);
+      } catch (e) {
+        if (!ctrl.signal.aborted) {
+          toast.info(`Could not check the result against the screenshot: ${e instanceof Error ? e.message : "unknown error"}. Kept the first version.`);
+        }
+        break;
+      }
+    }
+    setNotice(null);
+    return current;
   }
 
   /** Rebuilds the page from a new list of screenshots. Calls run one after another. */
@@ -149,6 +186,7 @@ export function Studio() {
     setFiles([]);
     setNotice(null);
     setUsedModel(null);
+    setUncorrected(null);
     setTab("compare");
     // With a lighter model to fall back on, one retry is enough: waiting on a busy model rarely helps.
     const fallback = fellBack ? null : lighterModel(providerId, liveModels.length > 0 ? liveModels : getPreset(providerId).models, cfg.model);
@@ -177,6 +215,8 @@ export function Studio() {
       );
       setFiles(result);
       setUsedModel(cfg.model);
+      const final = rounds > 0 ? await correct(cfg, result, image, ctrl) : result;
+      setFiles(final);
       setStage("done");
       setTab("compare");
     } catch (e) {
@@ -259,7 +299,7 @@ export function Studio() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="flex min-h-5 items-center gap-2 text-sm text-muted-foreground" role="status" aria-live="polite">
               {busy && <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />}
-              {busy && notice ? notice : stage === "done" && usedModel ? `Done with ${usedModel}. Drag the handle to compare.` : STAGE_LABEL[stage]}
+              {busy && notice ? notice : stage === "done" && usedModel ? `Done with ${usedModel}${uncorrected ? ", then corrected against your screenshot" : ""}. Drag the handle to compare.` : STAGE_LABEL[stage]}
               {stage === "idle" &&
                 !configProblem &&
                 `Ready. ${sourceCount > 1 ? `${sourceCount} screenshots stacked top to bottom. ` : ""}${
@@ -292,6 +332,33 @@ export function Studio() {
               <Button variant="outline" disabled={busy} onClick={() => setSources(() => [])}>
                 New screenshot
               </Button>
+              {resultReady && uncorrected && (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setFiles(uncorrected);
+                    setUncorrected(null);
+                    toast.info("Went back to the version before the corrections.");
+                  }}
+                >
+                  <Undo2 className="h-4 w-4" aria-hidden="true" /> Undo corrections
+                </Button>
+              )}
+              <select
+                aria-label="Correction rounds after generating"
+                title="After the code is written, the page is drawn, compared with your screenshot, and the model fixes the differences. Each round is one more model call."
+                value={rounds}
+                disabled={busy}
+                onChange={(e) => setRounds(Number(e.target.value))}
+                className="h-9 rounded-md border border-input bg-background px-2 text-sm disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <option value={0}>Fix pass: off</option>
+                {Array.from({ length: MAX_ROUNDS }, (_, i) => i + 1).map((n) => (
+                  <option key={n} value={n}>
+                    Fix pass: {n} {n === 1 ? "round" : "rounds"}
+                  </option>
+                ))}
+              </select>
               {busy ? (
                 <Button variant="outline" onClick={() => abortRef.current?.abort()}>
                   <Square className="h-4 w-4" aria-hidden="true" /> Stop

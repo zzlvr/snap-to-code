@@ -15,3 +15,18 @@ describe("buildPreviewHtml", () => {
     expect(html).toContain('darkMode: "class"');
   });
 });
+
+describe("buildPreviewHtml capture mode", () => {
+  const files = [{ path: "app/page.tsx", code: "export default function P() { return <main /> }" }];
+
+  it("only draws the page into an image when asked to", () => {
+    expect(buildPreviewHtml(files)).not.toContain("window.__CAPTURE__ = true");
+    expect(buildPreviewHtml(files, { capture: true })).toContain("window.__CAPTURE__ = true");
+  });
+
+  it("needs no extra script source for the capture", () => {
+    const plain = buildPreviewHtml(files).match(/<script src="[^"]+"/g);
+    const capture = buildPreviewHtml(files, { capture: true }).match(/<script src="[^"]+"/g);
+    expect(capture).toEqual(plain);
+  });
+});

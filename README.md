@@ -26,6 +26,7 @@ Use it on your own designs, mock-ups and sites you have the right to reuse, or t
 - **Two steps**: the model first reads the structure (*Structure* tab), then writes one file per component, streamed live.
 - **Stack**: Tailwind utility classes, shadcn/ui components, lucide-react icons; `app/page.tsx` composes the page.
 - **Before / after**: your screenshot and the result side by side with one draggable divider (mouse, touch or arrow keys).
+- **Fix pass**: after the code is written, the page is drawn, compared with your screenshot, and the model fixes the differences it sees. Off, or 1 to 3 rounds (each round is one more model call); one click undoes the corrections.
 - **Live preview**: sandboxed iframe with Desktop / Tablet / Mobile widths.
 - **Export**: copy all files, download a ZIP, or copy the `npx shadcn@latest add ...` command.
 - **Your own model**: Gemini, OpenAI, Anthropic, OpenRouter, Ollama, or any OpenAI-compatible server.

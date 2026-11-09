@@ -7,7 +7,7 @@ import type { GeneratedFile } from "./types";
  * shadcn/ui and lucide-react are provided by lightweight in-iframe implementations,
  * so the preview is a close approximation of the real project, not a byte-exact one.
  */
-export function buildPreviewHtml(files: GeneratedFile[]): string {
+export function buildPreviewHtml(files: GeneratedFile[], options: { capture?: boolean } = {}): string {
   const map: Record<string, string> = {};
   for (const f of files) map[f.path] = f.code;
   // "<" is escaped so generated code can never close the script tag.
@@ -15,6 +15,7 @@ export function buildPreviewHtml(files: GeneratedFile[]): string {
 
   return (
     HEAD +
+    (options.capture ? "<script>window.__CAPTURE__ = true;</script>" : "") +
     "<script>window.__FILES__ = " +
     filesJson +
     ";</script>" +
@@ -235,6 +236,38 @@ const RUNTIME = String.raw`
     return mod.exports;
   }
 
+  // Draws the rendered page into a PNG without any library: the page and every CSS rule go into an SVG
+  // foreignObject, which the browser paints itself. Waits for the Tailwind CDN to have generated its styles.
+  function capturePage() {
+    function fail(e) { parent.postMessage({ type: "preview-capture-error", message: String(e && e.message || e) }, "*"); }
+    try {
+      var root = document.getElementById("root");
+      var w = Math.ceil(Math.max(root.scrollWidth, window.innerWidth));
+      var hgt = Math.ceil(root.scrollHeight);
+      var css = "";
+      Array.prototype.forEach.call(document.styleSheets, function (sheet) {
+        try { Array.prototype.forEach.call(sheet.cssRules, function (r) { css += r.cssText + "\n"; }); } catch (e) {}
+      });
+      var body = getComputedStyle(document.body);
+      var xml = new XMLSerializer().serializeToString(root.cloneNode(true));
+      var wrap = '<div xmlns="http://www.w3.org/1999/xhtml" style="width:' + w + 'px;min-height:' + hgt + 'px;margin:0;background:' + body.backgroundColor +
+        ";color:" + body.color + ";font-family:" + body.fontFamily.replace(/"/g, "'") + '"><style>' +
+        css.replace(/&/g, "&amp;").replace(/</g, "&lt;") + "</style>" + xml + "</div>";
+      var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + w + '" height="' + hgt + '"><foreignObject width="100%" height="100%">' + wrap + "</foreignObject></svg>";
+      var img = new Image();
+      img.onload = function () {
+        try {
+          var canvas = document.createElement("canvas");
+          canvas.width = w; canvas.height = hgt;
+          canvas.getContext("2d").drawImage(img, 0, 0);
+          parent.postMessage({ type: "preview-capture", dataUrl: canvas.toDataURL("image/png"), width: w, height: hgt }, "*");
+        } catch (e) { fail(e); }
+      };
+      img.onerror = function () { fail("The page could not be drawn"); };
+      img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+    } catch (e) { fail(e); }
+  }
+
   class Boundary extends React.Component {
     constructor(p) { super(p); this.state = { error: null }; }
     static getDerivedStateFromError(error) { return { error: error }; }
@@ -249,6 +282,7 @@ const RUNTIME = String.raw`
     if (typeof Page !== "function") throw new Error(entry + " has no default export component");
     ReactDOM.createRoot(document.getElementById("root")).render(h(Boundary, null, h(Page)));
     parent.postMessage({ type: "preview-ok" }, "*");
+    if (window.__CAPTURE__) setTimeout(capturePage, 600);
   } catch (e) { report(String(e && e.message || e)); }
 })();
 `;

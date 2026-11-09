@@ -40,6 +40,26 @@ Output format (mandatory): ONLY file blocks, no prose, no markdown fences. Each 
 <code>
 Put each marker on its own line, before the file's code. The last file must be app/page.tsx.`;
 
+export const NO_CHANGES = "NO CHANGES NEEDED";
+
+export const REFINE_SYSTEM = `${GENERATION_SYSTEM}
+
+You are now in a correction pass. You get the original design and a picture of how the current code renders. Compare them carefully and fix every visible difference you can see: layout and column count, spacing, sizes, alignment, colors, theme, corner radius, button fills, borders, text and icons.
+- Change only what is different. Do not rewrite parts that already match, and never make the page less faithful to the original.
+- Output ONLY the files you change, each complete, in the file format above. The order does not matter and app/page.tsx does not have to be last.
+- If the render already matches the design closely, output exactly: ${NO_CHANGES}`;
+
+/** The corrections round: tells the model which images are the design and which are the render. */
+export function refinePrompt(files: { path: string; code: string }[], designParts: number, renderParts: number): string {
+  const images =
+    `The first ${designParts} image${designParts === 1 ? " is" : "s are"} the original design` +
+    `${designParts > 1 ? " (consecutive slices of one page)" : ""}. ` +
+    `The next ${renderParts} image${renderParts === 1 ? " is" : "s are"} the current code rendered at the same width` +
+    `${renderParts > 1 ? " (consecutive slices of one page)" : ""}.`;
+  const code = files.map((f) => `=== FILE: ${f.path} ===\n${f.code}`).join("\n");
+  return `${images}\n\nCurrent code:\n\n${code}\n\nFix the differences between the render and the design. Output only the changed files, or ${NO_CHANGES}.`;
+}
+
 /** Tells the model that several images are slices of one page, not several pages. Empty for a single image. */
 export function partsNote(count: number): string {
   if (count <= 1) return "";

@@ -47,4 +47,4 @@ export interface GeneratedFile {
   code: string;
 }
 
-export type Stage = "idle" | "analyzing" | "generating" | "done" | "error";
+export type Stage = "idle" | "analyzing" | "generating" | "refining" | "done" | "error";

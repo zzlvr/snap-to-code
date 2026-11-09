@@ -69,6 +69,14 @@ export function useSettings() {
     [providerId, stored.profiles],
   );
   const config = useMemo(() => toConfig(providerId, profile), [providerId, profile]);
+  /** The saved key and settings of any provider, for features that use several providers at once. */
+  const configFor = useCallback(
+    (id: string) => {
+      const pid = getPreset(id).id;
+      return toConfig(pid, { ...defaultProfile(pid), ...stored.profiles[pid] });
+    },
+    [stored.profiles],
+  );
   const touched = Boolean(stored.touched) || Object.values(stored.profiles).some((p) => p.apiKey);
 
   const setProvider = useCallback((id: string) => save((p) => ({ ...p, provider: id, touched: true })), [save]);
@@ -127,5 +135,5 @@ export function useSettings() {
     [save],
   );
 
-  return { providerId, profile, config, loaded, touched, setProvider, patch, setKey, applyLocal };
+  return { providerId, profile, config, configFor, loaded, touched, setProvider, patch, setKey, applyLocal };
 }

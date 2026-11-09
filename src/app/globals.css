@@ -164,3 +164,17 @@
     transform: translateY(150%);
   }
 }
+
+/* The rich colours of the toasts are a little under the contrast minimum: darken the text. */
+[data-sonner-toast][data-rich-colors="true"][data-type="success"] {
+  --success-text: #00591d;
+}
+[data-sonner-toast][data-rich-colors="true"][data-type="error"] {
+  --error-text: #9b1c1c;
+}
+[data-sonner-toast][data-rich-colors="true"][data-type="info"] {
+  --info-text: #0b4a8f;
+}
+[data-sonner-toast][data-rich-colors="true"][data-type="warning"] {
+  --warning-text: #7a4b00;
+}

@@ -5,6 +5,7 @@ import { ImagePlus, Loader2, Palette, Settings2, Sparkles, Square, Undo2, X } fr
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useArena } from "@/hooks/use-arena";
 import { useImageIntake } from "@/hooks/use-image-intake";
 import { useLiveModels } from "@/hooks/use-live-models";
 import { MAX_ROUNDS, useRounds } from "@/hooks/use-rounds";
@@ -26,6 +27,7 @@ import { CompareView, OriginalStage } from "./compare-view";
 import { Dropzone } from "./dropzone";
 import { ModelDialog } from "./model-dialog";
 import { PreviewFrame } from "./preview-frame";
+import { ArenaView } from "./arena-view";
 
 const STAGE_LABEL: Record<Stage, string> = {
   idle: "",
@@ -36,12 +38,16 @@ const STAGE_LABEL: Record<Stage, string> = {
   error: "",
 };
 
+/** Tabs wrap on a narrow screen and are tall enough to tap. */
+const TAB = "h-9 flex-none px-3";
+
 function Empty({ children }: { children: React.ReactNode }) {
   return <p className="py-16 text-center text-sm text-muted-foreground">{children}</p>;
 }
 
 export function Studio() {
-  const { providerId, profile, config, loaded, touched, setProvider, patch, setKey, applyLocal } = useSettings();
+  const { providerId, profile, config, configFor, loaded, touched, setProvider, patch, setKey, applyLocal } = useSettings();
+  const arena = useArena();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [finding, setFinding] = useState(false);
   const probed = useRef(false);
@@ -77,7 +83,25 @@ export function Studio() {
     setAnalysis(null);
     setFiles([]);
     setUncorrected(null);
+    arena.clearResults();
     setTab("compare");
+  }
+
+  /** Two models to start the comparison with: the current one and a neighbour from the same provider. */
+  function seedArena() {
+    const ids = liveModels.length > 0 ? liveModels : getPreset(providerId).models;
+    const other = lighterModel(providerId, ids, config.model) ?? ids.find((m) => m !== config.model) ?? "";
+    arena.addEntry(providerId, config.model);
+    arena.addEntry(providerId, other);
+  }
+
+  function loadArenaResult(result: GeneratedFile[], label: string) {
+    setFiles(result);
+    setUsedModel(label);
+    setUncorrected(null);
+    setStage("done");
+    setTab("compare");
+    toast.success(`Loaded the result of ${label}. It is now in Compare, Live preview and Code.`);
   }
 
   /**
@@ -100,7 +124,7 @@ export function Studio() {
         setUncorrected((prev) => prev ?? start);
       } catch (e) {
         if (!ctrl.signal.aborted) {
-          toast.info(`Could not check the result against the screenshot: ${e instanceof Error ? e.message : "unknown error"}. Kept the first version.`);
+          toast.info(`Could not check the result against the screenshot: ${(e instanceof Error ? e.message : "unknown error").replace(/\.+$/, "")}. Kept the first version.`);
         }
         break;
       }
@@ -417,6 +441,7 @@ export function Studio() {
               ) : (
                 <Button
                   className="border border-foreground/15 bg-lime font-semibold text-foreground hover:bg-lime/80"
+                  disabled={arena.running}
                   onClick={() => void generate()}
                 >
                   <Sparkles className="h-4 w-4" aria-hidden="true" /> {resultReady ? "Regenerate" : "Generate code"}
@@ -426,14 +451,21 @@ export function Studio() {
           </div>
 
           <section aria-label="Result" className="min-w-0 rounded-md border bg-card p-4">
-            <Tabs value={tab} onValueChange={setTab}>
-              <TabsList>
-                <TabsTrigger value="compare">Compare</TabsTrigger>
-                <TabsTrigger value="live" disabled={!resultReady}>
+            <Tabs
+              value={tab}
+              onValueChange={(value) => {
+                setTab(value);
+                if (value === "arena" && arena.entries.length === 0) seedArena();
+              }}
+            >
+              <TabsList className="h-auto! max-w-full flex-wrap justify-start">
+                <TabsTrigger className={TAB} value="compare">Compare</TabsTrigger>
+                <TabsTrigger className={TAB} value="live" disabled={!resultReady}>
                   Live preview
                 </TabsTrigger>
-                <TabsTrigger value="code">Code{files.length > 0 && ` (${files.length})`}</TabsTrigger>
-                <TabsTrigger value="analysis">Structure</TabsTrigger>
+                <TabsTrigger className={TAB} value="code">Code{files.length > 0 && ` (${files.length})`}</TabsTrigger>
+                <TabsTrigger className={TAB} value="analysis">Structure</TabsTrigger>
+                <TabsTrigger className={TAB} value="arena">Compare models</TabsTrigger>
               </TabsList>
               <TabsContent value="compare" className="mt-4">
                 {resultReady ? (
@@ -450,6 +482,23 @@ export function Studio() {
               </TabsContent>
               <TabsContent value="analysis" className="mt-4">
                 <AnalysisView analysis={analysis} />
+              </TabsContent>
+              <TabsContent value="arena" className="mt-4">
+                <ArenaView
+                  image={image}
+                  designSystem={designSystem}
+                  entries={arena.entries}
+                  runs={arena.runs}
+                  running={arena.running}
+                  disabled={busy}
+                  configFor={(e) => ({ ...configFor(e.providerId), model: e.model.trim() })}
+                  onAdd={() => arena.addEntry(providerId, "")}
+                  onChange={arena.changeEntry}
+                  onRemove={arena.removeEntry}
+                  onStart={() => void arena.start(image, (e) => ({ ...configFor(e.providerId), model: e.model.trim() }), designSystem)}
+                  onStop={arena.stop}
+                  onUse={loadArenaResult}
+                />
               </TabsContent>
             </Tabs>
           </section>

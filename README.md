@@ -28,6 +28,7 @@ Use it on your own designs, mock-ups and sites you have the right to reuse, or t
 - **Before / after**: your screenshot and the result side by side with one draggable divider (mouse, touch or arrow keys).
 - **Fix pass**: after the code is written, the page is drawn, compared with your screenshot, and the model fixes the differences it sees. Off, or 1 to 3 rounds (each round is one more model call); one click undoes the corrections.
 - **Your design system**: add your `globals.css`, `tailwind.config` and the files from `components/ui`, and the code uses your colours, radius and components instead of the defaults. Works best with Tailwind v4 theme variables. The files stay in your browser and are sent to your model provider as part of the request, like the screenshot.
+- **Compare models**: run one screenshot through up to four models at once, with the keys you saved for their providers, look at the results side by side and keep the one you prefer. Each model is a full run, so the cost is the sum of the runs.
 - **Live preview**: sandboxed iframe with Desktop / Tablet / Mobile widths.
 - **Export**: copy all files, download a ZIP, or copy the `npx shadcn@latest add ...` command.
 - **Your own model**: Gemini, OpenAI, Anthropic, OpenRouter, Ollama, or any OpenAI-compatible server.

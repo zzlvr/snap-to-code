@@ -82,6 +82,10 @@ body{margin:0;background:hsl(var(--background));color:hsl(var(--foreground));fon
 
 const RUNTIME = String.raw`
 (function () {
+  if (typeof React === "undefined" || typeof ReactDOM === "undefined" || typeof Babel === "undefined") {
+    parent.postMessage({ type: "preview-error", message: "The preview scripts could not be loaded. Check your internet connection and reload." }, "*");
+    return;
+  }
   var h = React.createElement;
   function report(msg) {
     var el = document.getElementById("err");

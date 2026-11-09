@@ -30,3 +30,11 @@ describe("buildPreviewHtml capture mode", () => {
     expect(capture).toEqual(plain);
   });
 });
+
+describe("buildPreviewHtml without the CDN scripts", () => {
+  it("reports at once that the scripts are missing instead of failing silently", () => {
+    const html = buildPreviewHtml([{ path: "app/page.tsx", code: "x" }]);
+    expect(html).toContain('typeof React === "undefined"');
+    expect(html).toContain("The preview scripts could not be loaded");
+  });
+});

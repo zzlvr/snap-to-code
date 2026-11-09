@@ -97,9 +97,15 @@ export function hasDesignSystem(ds: DesignSystem | null | undefined): ds is Desi
   return !!ds && ds.sources.length > 0;
 }
 
+/** Files are the user's own but can be large: the model only gets a bounded amount of them. */
+const MAX_VARS = 80;
+const MAX_COMPONENTS = 60;
+const MAX_EXPORTS = 12;
+
 const list = (vars: Record<string, string>) =>
   Object.entries(vars)
-    .map(([k, v]) => `${k}: ${v}`)
+    .slice(0, MAX_VARS)
+    .map(([k, v]) => `${k}: ${v.slice(0, 120)}`)
     .join("; ");
 
 /** Class names of the colours the project defines (primary, muted-foreground, lime, ...). */
@@ -129,7 +135,10 @@ export function designSystemRules(ds: DesignSystem): string {
   if (ds.components.length > 0) {
     parts.push(
       "UI components the project has, imported as @/components/ui/<file>. Use only these shadcn components, and only the names exported here:\n" +
-        ds.components.map((c) => `- ${c.name}: ${c.exports.join(", ")}`).join("\n"),
+        ds.components
+          .slice(0, MAX_COMPONENTS)
+          .map((c) => `- ${c.name}: ${c.exports.slice(0, MAX_EXPORTS).join(", ")}`)
+          .join("\n"),
     );
   }
   return parts.join("\n");

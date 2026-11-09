@@ -70,6 +70,15 @@ describe("prompt rules", () => {
     expect(withDesignSystem(GENERATION_SYSTEM, ds)).toContain(GENERATION_SYSTEM);
   });
 
+  it("keeps the amount of text sent to the model bounded", () => {
+    const css = ":root{" + Array.from({ length: 300 }, (_, i) => `--c${i}:#${String(i).padStart(6, "0")}`).join(";") + "}";
+    const comps = Array.from({ length: 200 }, (_, i) => ({ name: `c${i}.tsx`, text: "export function A(){return null}" }));
+    const rules = designSystemRules(extractDesignSystem([{ name: "g.css", text: css }, ...comps]));
+    expect(rules).toContain("--c79:");
+    expect(rules).not.toContain("--c80:");
+    expect(rules.split("\n- c").length - 1).toBeLessThanOrEqual(60);
+  });
+
   it("leaves the instructions alone without a design system", () => {
     expect(withDesignSystem(GENERATION_SYSTEM, null)).toBe(GENERATION_SYSTEM);
     expect(withDesignSystem(GENERATION_SYSTEM, extractDesignSystem([]))).toBe(GENERATION_SYSTEM);
